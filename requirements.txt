@@ -1,0 +1,8 @@
+flask
+Flask-Limiter[redis]
+twilio
+openai
+redis
+pytz
+gunicorn
+python-dotenv

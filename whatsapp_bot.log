@@ -1,0 +1,24 @@
+2025-03-04 18:04:50,562 - werkzeug - WARNING -  * Debugger is active!
+2025-03-04 18:04:50,566 - werkzeug - INFO -  * Debugger PIN: 814-667-698
+2025-03-04 18:04:51,757 - werkzeug - INFO -  * Detected change in '/Users/wnoubi/Desktop/DEV/whatsapp bot/app.py', reloading
+2025-03-04 18:04:52,534 - werkzeug - INFO -  * Detected change in '/Users/wnoubi/Desktop/DEV/whatsapp bot/app.py', reloading
+2025-03-04 18:04:52,917 - werkzeug - WARNING -  * Debugger is active!
+2025-03-04 18:04:52,921 - werkzeug - INFO -  * Debugger PIN: 814-667-698
+2025-03-04 18:04:53,252 - werkzeug - INFO -  * Detected change in '/Users/wnoubi/Desktop/DEV/whatsapp bot/app.py', reloading
+2025-03-04 18:04:54,288 - werkzeug - WARNING -  * Debugger is active!
+2025-03-04 18:04:54,293 - werkzeug - INFO -  * Debugger PIN: 814-667-698
+2025-03-04 18:05:01,059 - werkzeug - INFO -  * Detected change in '/Users/wnoubi/Desktop/DEV/whatsapp bot/app.py', reloading
+2025-03-04 18:05:01,677 - werkzeug - WARNING -  * Debugger is active!
+2025-03-04 18:05:01,682 - werkzeug - INFO -  * Debugger PIN: 814-667-698
+2025-03-04 18:05:01,726 - werkzeug - INFO -  * Detected change in '/Users/wnoubi/Desktop/DEV/whatsapp bot/app.py', reloading
+2025-03-04 18:05:03,042 - werkzeug - WARNING -  * Debugger is active!
+2025-03-04 18:05:03,046 - werkzeug - INFO -  * Debugger PIN: 814-667-698
+2025-03-04 18:05:07,339 - __main__ - WARNING - Invalid Twilio signature: /yUuYx5HXZnT0fzn/oAisiGMHyM=
+2025-03-04 18:05:07,340 - werkzeug - INFO - 127.0.0.1 - - [04/Mar/2025 18:05:07] "[31m[1mPOST /webhook HTTP/1.1[0m" 403 -
+2025-03-04 18:05:21,241 - werkzeug - INFO -  * Detected change in '/Users/wnoubi/Desktop/DEV/whatsapp bot/app.py', reloading
+2025-03-04 18:05:22,541 - werkzeug - WARNING -  * Debugger is active!
+2025-03-04 18:05:22,546 - werkzeug - INFO -  * Debugger PIN: 814-667-698
+2025-03-04 18:05:25,714 - werkzeug - INFO -  * Detected change in '/Users/wnoubi/Desktop/DEV/whatsapp bot/app.py', reloading
+2025-03-04 18:05:26,929 - werkzeug - WARNING -  * Debugger is active!
+2025-03-04 18:05:26,935 - werkzeug - INFO -  * Debugger PIN: 814-667-698
+2025-03-04 18:06:13,024 - werkzeug - INFO -  * Detected change in '/Users/wnoubi/Desktop/DEV/whatsapp bot/app.py', reloading
