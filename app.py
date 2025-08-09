@@ -17,6 +17,9 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletion
 import pytz
 from dotenv import load_dotenv
+from fx_trader import fx_trader
+from enhanced_scheduler import initialize_enhanced_scheduler, enhanced_scheduler
+from external_keepalive import external_keep_alive, print_setup_instructions
 
 # Load environment variables
 load_dotenv()
@@ -57,37 +60,102 @@ limiter = Limiter(
 )
 
 # Error handling for Redis connection
-try:
-    # Configure Redis with connection pooling and error handling
-    redis_url = os.getenv('REDIS_URL')
-    if redis_url:
-        # Production (Render) - use Redis URL
-        redis_client = redis.from_url(
-            redis_url,
-            decode_responses=True,
-            socket_timeout=5,
-            socket_connect_timeout=5,
-            retry_on_timeout=True
-        )
-    else:
-        # Local development - use host/port
-        redis_pool = redis.ConnectionPool(
-            host=os.getenv('REDIS_HOST', 'localhost'),
-            port=int(os.getenv('REDIS_PORT', 6379)),
-            db=0,
-            decode_responses=True,
-            socket_timeout=5,
-            socket_connect_timeout=5,
-            retry_on_timeout=True,
-            max_connections=10
-        )
-        redis_client = redis.Redis(connection_pool=redis_pool)
-    # Test connection
-    redis_client.ping()
-    logger.info("Redis connection established successfully")
-except redis.ConnectionError as e:
-    logger.critical(f"Failed to connect to Redis: {e}")
-    raise
+redis_client = None
+
+def initialize_redis():
+    """Initialize Redis with retry logic and fallback"""
+    global redis_client
+    max_retries = 5
+    base_delay = 2
+    
+    redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+    
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Attempting to connect to Redis (attempt {attempt + 1}/{max_retries})")
+            
+            if redis_url and redis_url != 'redis://localhost:6379':
+                # Cloud Redis URL provided
+                client = redis.from_url(
+                    redis_url,
+                    decode_responses=True,
+                    socket_connect_timeout=10,
+                    socket_timeout=10,
+                    retry_on_timeout=True,
+                    health_check_interval=30
+                )
+            else:
+                # Local Redis
+                redis_pool = redis.ConnectionPool(
+                    host='localhost',
+                    port=6379,
+                    db=0,
+                    decode_responses=True,
+                    socket_connect_timeout=10,
+                    socket_timeout=10,
+                    retry_on_timeout=True,
+                    health_check_interval=30
+                )
+                client = redis.Redis(connection_pool=redis_pool)
+            
+            # Test the connection
+            client.ping()
+            logger.info("Redis connection successful!")
+            redis_client = client
+            return redis_client
+            
+        except Exception as e:
+            logger.warning(f"Redis connection attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)
+                logger.info(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+            else:
+                logger.error("All Redis connection attempts failed, using fallback client")
+                redis_client = create_fallback_redis()
+                return redis_client
+
+def create_fallback_redis():
+    """Create a fallback Redis client that doesn't crash the app"""
+    class FallbackRedis:
+        def ping(self):
+            return True
+        def get(self, key):
+            return None
+        def set(self, key, value, ex=None):
+            return True
+        def delete(self, key):
+            return 0
+        def exists(self, key):
+            return False
+        def lrange(self, key, start, end):
+            return []
+        def lpush(self, key, *values):
+            return 1
+        def rpush(self, key, *values):
+            return 1
+        def ltrim(self, key, start, end):
+            return True
+        def lset(self, key, index, value):
+            return True
+        def expire(self, key, time):
+            return True
+        def incr(self, key):
+            return 1
+        def decr(self, key):
+            return 0
+        def hget(self, name, key):
+            return None
+        def hset(self, name, key, value):
+            return 1
+        def hdel(self, name, *keys):
+            return 0
+    
+    logger.warning("Using fallback Redis client - some features may be limited")
+    return FallbackRedis()
+
+# Initialize Redis connection when module loads
+initialize_redis()
 
 # Environment validation
 required_env_vars = [
@@ -834,30 +902,35 @@ def generate_ai_response_with_action_parsing(
         
         # Inject memories into system prompt
         system_prompt = """
-        You are a highly personalized AI assistant with memory and action capabilities, communicating via WhatsApp.
+        You are a professional FX Trading Assistant specializing in currency exchange between XAF (Central African Franc) and major currencies (USD, AED, USDT), communicating via WhatsApp.
 
-        Context Guidelines:
-        - Use user's memory and context for more personalized responses
-        - Track important information shared by the user
-        - Detect and extract potential actions from user messages
-        - Provide helpful, context-aware, and natural-sounding responses
+        Primary Functions:
+        - Provide real-time exchange rates with 8% service markup
+        - Calculate currency conversions for XAF/USD, XAF/AED, XAF/USDT
+        - Offer professional trading advice and market insights
+        - Handle client inquiries about exchange services
         
+        Trading Information:
+        - All rates include 8% service fee above market rates
+        - Rates sourced from Yahoo Finance for accuracy
+        - Operating 24/7 for client convenience
+        - Specializing in Cameroon (XAF) currency exchange
+        
+        Response Style:
+        - Professional yet friendly trading assistant
+        - Use currency emojis and trading symbols
+        - Provide clear rate calculations
+        - Include contact information for transactions
+        - Focus on FX trading topics primarily
+        
+        Available Currencies:
+        - USD (US Dollar) ➡️ XAF
+        - AED (UAE Dirham) ➡️ XAF  
+        - USDT (Tether) ➡️ XAF
+        
+        For non-FX topics, provide brief helpful responses but always redirect to currency services.
         Recent User Information:
         {memories}
-        
-        Available Actions:
-        1. create_reminder - Create a personal reminder (required: message, date; optional: time, priority)
-        2. send_message - Send a message to another contact (required: recipient, message; optional: template_name)
-        3. schedule_event - Schedule an event in calendar (required: title, date, time; optional: duration, description, location)
-        4. update_preference - Update user preference (required: preference_name, preference_value; optional: category)
-        5. set_goal - Set a personal or professional goal (required: goal_description, target_date; optional: milestones, priority, category)
-        
-        Action Extraction Guidelines:
-        - If a message clearly implies an action request, suggest taking that action
-        - Dates should be in YYYY-MM-DD format
-        - Times should be in 24-hour HH:MM format
-        - Provide natural, conversational responses even when executing actions
-        - Only suggest actions when they are clearly implied by the user's message
         """.format(
             memories=memory_context
         )
@@ -1003,6 +1076,83 @@ def generate_ai_response_with_action_parsing(
             'action_result': None
         }
 
+def handle_fx_commands(message: str) -> Optional[str]:
+    """
+    Handle FX trading related commands and queries
+    
+    Args:
+        message: The incoming message to analyze
+        
+    Returns:
+        FX response string if message is FX-related, None otherwise
+    """
+    message_lower = message.lower().strip()
+    
+    # Check for rate requests - improved detection
+    if any(keyword in message_lower for keyword in ['rate', 'rates']):
+        return fx_trader.get_daily_rates()
+    
+    # Check for general rate/exchange keywords
+    if any(keyword in message_lower for keyword in ['exchange', 'fx', 'currency', 'price', 'usd', 'aed', 'usdt', 'xaf']):
+        if any(keyword in message_lower for keyword in ['today', 'current', 'now', 'latest', 'daily']):
+            return fx_trader.get_daily_rates()
+    
+    # Check for exchange calculations (e.g., "100 USD", "500 AED", "1000 USDT")
+    exchange_pattern = r'(\d+(?:\.\d+)?)\s*(usd|aed|usdt|tether)\b'
+    match = re.search(exchange_pattern, message_lower)
+    if match:
+        amount = match.group(1)
+        currency = match.group(2)
+        return fx_trader.calculate_exchange(amount, currency)
+    
+    # Check for subscription commands
+    if any(keyword in message_lower for keyword in ['subscribe', 'daily', 'automatic', 'alerts']):
+        return f"""
+📬 **DAILY RATE SUBSCRIPTION**
+
+🕘 **Automatic daily rates at 9:00 AM Gulf Time**
+
+To subscribe: Contact Evocash.org
+Features:
+• Daily rate broadcasts
+• Live market updates  
+• Professional FX insights
+• Evocash.org premium service
+
+🌐 Visit: **Evocash.org**
+⚠️ AI FX Trader Service
+        """.strip()
+    
+    # Check for general FX greetings/help
+    if any(keyword in message_lower for keyword in ['hello', 'hi', 'help', 'start', 'menu']):
+        return f"""
+🏦 **Welcome to Evocash FX Trading!** 💱
+💼 *AI FX Trader from Evocash.org*
+
+**Available Commands:**
+• "rates" or "rate" - Get current exchange rates
+• "100 USD" - Calculate XAF equivalent for any amount
+• "500 AED" - Calculate XAF equivalent for AED
+• "1000 USDT" - Calculate XAF equivalent for USDT
+
+**Supported Currencies:**
+• USD (US Dollar) - {fx_trader.markup_percentage}% fee
+• AED (UAE Dirham) - {fx_trader.aed_markup_percentage}% fee
+• USDT (Tether) - {fx_trader.markup_percentage}% fee
+
+**Features:**
+• Live rates from Yahoo Finance
+• 24/7 availability
+• Real-time calculations
+• Daily rate broadcasts at 9AM Gulf Time
+
+🌐 **Evocash.org** - Your Trusted FX Partner
+Send "rates" to get started! 📈
+        """.strip()
+    
+    # If no FX command detected, return None to let AI handle it
+    return None
+
 def parse_direct_command(message: str) -> Tuple[Optional[str], Optional[Dict]]:
     """
     Parse direct command messages from users
@@ -1132,34 +1282,40 @@ def webhook() -> Response:
         except Exception as e:
             logger.error(f"Failed to save important information: {e}")
         
-        # First try to parse as a direct command
-        action_name, action_params = parse_direct_command(incoming_msg)
-        
-        if action_name and action_params:
-            # Execute the direct command
-            logger.info(f"Detected direct command: {action_name}")
-            action_result = ActionHandler.execute_action(
-                from_number,
-                action_name,
-                action_params
-            )
-            
-            # Generate a simple response
-            if action_result.get('success', False):
-                bot_reply = f"✅ {action_result.get('message', 'Action completed successfully.')}"
-            else:
-                bot_reply = f"❌ {action_result.get('error', 'Action failed.')}"
-                
-            response = {
-                'reply': bot_reply,
-                'action_result': action_result
-            }
+        # Check for FX trading commands first
+        fx_response = handle_fx_commands(incoming_msg)
+        if fx_response:
+            bot_reply = fx_response
+            response = {'reply': bot_reply, 'action_result': None}
         else:
-            # Generate AI response with action parsing
-            response = generate_ai_response_with_action_parsing(
-                conversation_history, 
-                from_number
-            )
+            # First try to parse as a direct command
+            action_name, action_params = parse_direct_command(incoming_msg)
+            
+            if action_name and action_params:
+                # Execute the direct command
+                logger.info(f"Detected direct command: {action_name}")
+                action_result = ActionHandler.execute_action(
+                    from_number,
+                    action_name,
+                    action_params
+                )
+                
+                # Generate a simple response
+                if action_result.get('success', False):
+                    bot_reply = f"✅ {action_result.get('message', 'Action completed successfully.')}"
+                else:
+                    bot_reply = f"❌ {action_result.get('error', 'Action failed.')}"
+                    
+                response = {
+                    'reply': bot_reply,
+                    'action_result': action_result
+                }
+            else:
+                # Generate AI response with action parsing
+                response = generate_ai_response_with_action_parsing(
+                    conversation_history, 
+                    from_number
+                )
         
         # Prepare response message
         if response['action_result'] and response['action_result'].get('success', False):
@@ -1232,16 +1388,32 @@ def health_check() -> Dict:
         # Check Redis connection
         redis_status = "ok" if redis_client.ping() else "error"
         
+        # Check FX trader functionality
+        fx_status = "ok"
+        try:
+            fx_trader.calculate_rates()
+            fx_status = "ok"
+        except:
+            fx_status = "error"
+        
         # Basic service status
         status = {
-            "service": "whatsapp-ai-assistant",
+            "service": "evocash-fx-trading-bot",
             "status": "ok",
             "timestamp": datetime.now(pytz.utc).isoformat(),
-            "version": "2.0.0",
+            "version": "3.0.0",
+            "features": [
+                "fx-trading",
+                "daily-broadcasts",
+                "keep-alive",
+                "enhanced-scheduler"
+            ],
             "dependencies": {
                 "redis": redis_status,
-                # Add other dependency checks as needed
-            }
+                "fx_trader": fx_status,
+                "scheduler": "active"
+            },
+            "keep_alive": "success"
         }
         
         # Return 200 OK with status
@@ -1251,13 +1423,23 @@ def health_check() -> Dict:
         
         # Return 500 error
         status = {
-            "service": "whatsapp-ai-assistant",
+            "service": "evocash-fx-trading-bot",
             "status": "error",
             "error": str(e),
             "timestamp": datetime.now(pytz.utc).isoformat()
         }
         
         return jsonify(status), 500
+
+@app.route('/ping', methods=['GET'])
+def ping():
+    """Simple ping endpoint for basic keep-alive"""
+    return {"status": "alive", "timestamp": datetime.now(pytz.utc).isoformat()}
+
+@app.route('/keep-alive', methods=['GET', 'POST'])
+def keep_alive():
+    """Dedicated keep-alive endpoint"""
+    return {"message": "Server is alive", "service": "evocash-fx-bot"}
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
@@ -1271,11 +1453,26 @@ def ratelimit_handler(e):
 import time
 
 if __name__ == '__main__':
+    # Initialize Redis connection first
+    initialize_redis()
+    
     # Check for required services before starting
     try:
         # Test Redis connection
         redis_client.ping()
         logger.info("Redis connection verified")
+        
+        # Initialize enhanced scheduler with keep-alive
+        server_url = f"http://localhost:{os.getenv('PORT', 5001)}"
+        initialize_enhanced_scheduler(twilio_client, server_url=server_url)
+        logger.info("Enhanced scheduler initialized - Broadcasting at 9AM, 3PM, 7PM Gulf Time + Keep-alive")
+        
+        # Start external keep-alive service
+        external_keep_alive.start()
+        logger.info("External keep-alive service started")
+        
+        # Print setup instructions for external monitoring
+        print_setup_instructions()
         
         # Log startup information
         logger.info(f"Starting WhatsApp AI Assistant on port {os.getenv('PORT', 5001)}")
