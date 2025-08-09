@@ -6,6 +6,5 @@ redis
 pytz
 gunicorn
 python-dotenv
-yfinance
 requests
 schedule
