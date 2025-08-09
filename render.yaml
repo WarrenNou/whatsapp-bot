@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: whatsapp-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.4
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_NUMBER
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: whatsapp-bot-redis
+          property: connectionString
+
+  - type: redis
+    name: whatsapp-bot-redis
+    ipAllowList: []
+    plan: free

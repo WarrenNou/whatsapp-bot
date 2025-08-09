@@ -59,17 +59,29 @@ limiter = Limiter(
 # Error handling for Redis connection
 try:
     # Configure Redis with connection pooling and error handling
-    redis_pool = redis.ConnectionPool(
-        host=os.getenv('REDIS_HOST', 'localhost'),
-        port=int(os.getenv('REDIS_PORT', 6379)),
-        db=0,
-        decode_responses=True,
-        socket_timeout=5,
-        socket_connect_timeout=5,
-        retry_on_timeout=True,
-        max_connections=10
-    )
-    redis_client = redis.Redis(connection_pool=redis_pool)
+    redis_url = os.getenv('REDIS_URL')
+    if redis_url:
+        # Production (Render) - use Redis URL
+        redis_client = redis.from_url(
+            redis_url,
+            decode_responses=True,
+            socket_timeout=5,
+            socket_connect_timeout=5,
+            retry_on_timeout=True
+        )
+    else:
+        # Local development - use host/port
+        redis_pool = redis.ConnectionPool(
+            host=os.getenv('REDIS_HOST', 'localhost'),
+            port=int(os.getenv('REDIS_PORT', 6379)),
+            db=0,
+            decode_responses=True,
+            socket_timeout=5,
+            socket_connect_timeout=5,
+            retry_on_timeout=True,
+            max_connections=10
+        )
+        redis_client = redis.Redis(connection_pool=redis_pool)
     # Test connection
     redis_client.ping()
     logger.info("Redis connection established successfully")
