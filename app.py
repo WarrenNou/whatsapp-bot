@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import re
+import time
 from typing import Dict, List, Any, Optional, Tuple, Union
 from datetime import datetime, timedelta
 import redis
@@ -65,10 +66,13 @@ redis_client = None
 def initialize_redis():
     """Initialize Redis with retry logic and fallback"""
     global redis_client
-    max_retries = 5
-    base_delay = 2
+    max_retries = 10  # Increased retries for cloud deployment
+    base_delay = 3   # Longer initial delay
     
     redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+    
+    # Log environment info
+    logger.info(f"Initializing Redis with URL: {redis_url[:20]}...")
     
     for attempt in range(max_retries):
         try:
@@ -79,8 +83,8 @@ def initialize_redis():
                 client = redis.from_url(
                     redis_url,
                     decode_responses=True,
-                    socket_connect_timeout=10,
-                    socket_timeout=10,
+                    socket_connect_timeout=15,  # Longer timeout for cloud
+                    socket_timeout=15,
                     retry_on_timeout=True,
                     health_check_interval=30
                 )
@@ -91,23 +95,31 @@ def initialize_redis():
                     port=6379,
                     db=0,
                     decode_responses=True,
-                    socket_connect_timeout=10,
-                    socket_timeout=10,
+                    socket_connect_timeout=15,
+                    socket_timeout=15,
                     retry_on_timeout=True,
                     health_check_interval=30
                 )
                 client = redis.Redis(connection_pool=redis_pool)
             
-            # Test the connection
-            client.ping()
-            logger.info("Redis connection successful!")
-            redis_client = client
-            return redis_client
+            # Test the connection with retry
+            for ping_attempt in range(3):
+                try:
+                    client.ping()
+                    logger.info("Redis connection successful!")
+                    redis_client = client
+                    return redis_client
+                except Exception as ping_e:
+                    if ping_attempt < 2:
+                        logger.warning(f"Redis ping failed, retrying... ({ping_e})")
+                        time.sleep(1)
+                    else:
+                        raise ping_e
             
         except Exception as e:
             logger.warning(f"Redis connection attempt {attempt + 1} failed: {e}")
             if attempt < max_retries - 1:
-                delay = base_delay * (2 ** attempt)
+                delay = min(base_delay * (2 ** attempt), 60)  # Cap at 60 seconds
                 logger.info(f"Retrying in {delay} seconds...")
                 time.sleep(delay)
             else:
@@ -156,6 +168,48 @@ def create_fallback_redis():
 
 # Initialize Redis connection when module loads
 initialize_redis()
+
+# Production-friendly initialization using threading
+import threading
+import atexit
+
+def initialize_background_services():
+    """Initialize background services for production"""
+    try:
+        logger.info("Initializing background services for production...")
+        
+        # Initialize enhanced scheduler with keep-alive (use environment PORT)
+        server_port = os.getenv('PORT', 5000)
+        server_url = f"http://0.0.0.0:{server_port}"
+        
+        try:
+            initialize_enhanced_scheduler(twilio_client, server_url=server_url)
+            logger.info("Enhanced scheduler initialized - Broadcasting at 9AM, 3PM, 7PM Gulf Time + Keep-alive")
+        except Exception as e:
+            logger.warning(f"Enhanced scheduler initialization failed: {e}")
+        
+        # Start external keep-alive service
+        try:
+            external_keep_alive.start()
+            logger.info("External keep-alive service started")
+        except Exception as e:
+            logger.warning(f"External keep-alive service failed to start: {e}")
+        
+        logger.info("Background services initialization complete")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize background services: {e}")
+
+# Initialize background services in a separate thread for production
+def delayed_initialization():
+    """Delay initialization to allow app to start first"""
+    time.sleep(10)  # Wait 10 seconds for app to be ready
+    initialize_background_services()
+
+# Start background initialization if not running in main thread
+if os.getenv('RENDER'):  # Only on Render
+    init_thread = threading.Thread(target=delayed_initialization, daemon=True)
+    init_thread.start()
 
 # Environment validation
 required_env_vars = [
@@ -1449,30 +1503,37 @@ def ratelimit_handler(e):
     resp.message("You've sent too many messages in a short period. Please try again later.")
     return str(resp), 429
 
-# Include the missing imports
-import time
-
 if __name__ == '__main__':
     # Initialize Redis connection first
     initialize_redis()
     
     # Check for required services before starting
     try:
-        # Test Redis connection
-        redis_client.ping()
-        logger.info("Redis connection verified")
+        # Test Redis connection (only for local development)
+        if redis_client and hasattr(redis_client, 'ping'):
+            redis_client.ping()
+            logger.info("Redis connection verified")
         
         # Initialize enhanced scheduler with keep-alive
         server_url = f"http://localhost:{os.getenv('PORT', 5001)}"
-        initialize_enhanced_scheduler(twilio_client, server_url=server_url)
-        logger.info("Enhanced scheduler initialized - Broadcasting at 9AM, 3PM, 7PM Gulf Time + Keep-alive")
+        try:
+            initialize_enhanced_scheduler(twilio_client, server_url=server_url)
+            logger.info("Enhanced scheduler initialized - Broadcasting at 9AM, 3PM, 7PM Gulf Time + Keep-alive")
+        except Exception as e:
+            logger.warning(f"Enhanced scheduler initialization failed: {e}")
         
         # Start external keep-alive service
-        external_keep_alive.start()
-        logger.info("External keep-alive service started")
+        try:
+            external_keep_alive.start()
+            logger.info("External keep-alive service started")
+        except Exception as e:
+            logger.warning(f"External keep-alive service failed to start: {e}")
         
         # Print setup instructions for external monitoring
-        print_setup_instructions()
+        try:
+            print_setup_instructions()
+        except Exception as e:
+            logger.warning(f"Failed to print setup instructions: {e}")
         
         # Log startup information
         logger.info(f"Starting WhatsApp AI Assistant on port {os.getenv('PORT', 5001)}")
