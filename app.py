@@ -66,13 +66,17 @@ redis_client = None
 def initialize_redis():
     """Initialize Redis with retry logic and fallback"""
     global redis_client
-    max_retries = 10  # Increased retries for cloud deployment
-    base_delay = 3   # Longer initial delay
+    
+    # More aggressive retry settings for cloud deployment
+    max_retries = 15 if os.getenv('RENDER') else 5
+    base_delay = 5 if os.getenv('RENDER') else 3
+    max_delay = 120  # Max 2 minutes between retries
     
     redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
     
     # Log environment info
     logger.info(f"Initializing Redis with URL: {redis_url[:20]}...")
+    logger.info(f"Cloud deployment: {'Yes' if os.getenv('RENDER') else 'No'}")
     
     for attempt in range(max_retries):
         try:
@@ -83,10 +87,10 @@ def initialize_redis():
                 client = redis.from_url(
                     redis_url,
                     decode_responses=True,
-                    socket_connect_timeout=15,  # Longer timeout for cloud
-                    socket_timeout=15,
+                    socket_connect_timeout=30,  # Much longer timeout for cloud
+                    socket_timeout=30,
                     retry_on_timeout=True,
-                    health_check_interval=30
+                    health_check_interval=60
                 )
             else:
                 # Local Redis
@@ -102,24 +106,26 @@ def initialize_redis():
                 )
                 client = redis.Redis(connection_pool=redis_pool)
             
-            # Test the connection with retry
-            for ping_attempt in range(3):
+            # Test the connection with more retries for cloud
+            ping_retries = 5 if os.getenv('RENDER') else 3
+            for ping_attempt in range(ping_retries):
                 try:
                     client.ping()
                     logger.info("Redis connection successful!")
                     redis_client = client
                     return redis_client
                 except Exception as ping_e:
-                    if ping_attempt < 2:
-                        logger.warning(f"Redis ping failed, retrying... ({ping_e})")
-                        time.sleep(1)
+                    if ping_attempt < ping_retries - 1:
+                        wait_time = 3 if os.getenv('RENDER') else 1
+                        logger.warning(f"Redis ping failed, retrying in {wait_time}s... ({ping_e})")
+                        time.sleep(wait_time)
                     else:
                         raise ping_e
             
         except Exception as e:
             logger.warning(f"Redis connection attempt {attempt + 1} failed: {e}")
             if attempt < max_retries - 1:
-                delay = min(base_delay * (2 ** attempt), 60)  # Cap at 60 seconds
+                delay = min(base_delay * (2 ** attempt), max_delay)
                 logger.info(f"Retrying in {delay} seconds...")
                 time.sleep(delay)
             else:
@@ -203,13 +209,19 @@ def initialize_background_services():
 # Initialize background services in a separate thread for production
 def delayed_initialization():
     """Delay initialization to allow app to start first"""
-    time.sleep(10)  # Wait 10 seconds for app to be ready
+    # Wait longer on Render to allow Redis service to be ready
+    wait_time = 30 if os.getenv('RENDER') else 10
+    logger.info(f"Waiting {wait_time} seconds for services to be ready...")
+    time.sleep(wait_time)
     initialize_background_services()
 
 # Start background initialization if not running in main thread
 if os.getenv('RENDER'):  # Only on Render
+    logger.info("Render deployment detected - starting delayed initialization")
     init_thread = threading.Thread(target=delayed_initialization, daemon=True)
     init_thread.start()
+else:
+    logger.info("Local deployment - no delayed initialization needed")
 
 # Environment validation
 required_env_vars = [
