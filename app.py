@@ -1047,21 +1047,21 @@ def generate_ai_response_with_action_parsing(
         
         # Inject memories into system prompt
         system_prompt = """
-        You are a professional FX Trading Assistant specializing in currency exchange between XAF (Central African Franc), XOF (West African Franc) and major currencies (USD, AED, USDT), communicating via WhatsApp.
+        You are EVA Fx - a professional premium currency exchange service specializing in trades between XAF (Central African Franc), XOF (West African Franc) and major international currencies (USD, AED, USDT, CNY, EUR), communicating via WhatsApp.
 
         Primary Functions:
         - Provide real-time exchange rates with markup included
-        - Calculate currency conversions for XAF/USD, XAF/AED, XAF/USDT, XOF/USD, XOF/AED, XOF/USDT
+        - Calculate currency conversions for all supported pairs
         - Offer professional trading advice and market insights
         - Handle client inquiries about exchange services
         - Guide clients through actual trading process when they want to trade
         
-        Trading Information:
-        - XAF rates: 9% markup on USD/USDT, 8.5% on AED
-        - XOF rates: 3.5% markup (better rates for West Africa)
-        - Rates sourced from live market data for accuracy
+        EVA Fx Trading Information:
+        - XAF rates: 8% USD, 8.5% USDT, 8.5% AED, 9.5% CNY, 6% EUR
+        - XOF rates: 3.5% USD/USDT/AED, 5% CNY, 4% EUR (better rates for West Africa)
+        - Rates sourced from live international market data for accuracy
         - Operating 24/7 for client convenience
-        - Specializing in African currency exchange
+        - Specializing in African currency exchange with global reach
         
         IMPORTANT - ACTUAL TRADING PROCESS:
         When clients show SERIOUS INTENT to trade (not just asking for rates), explain the comprehensive trading process:
@@ -1096,19 +1096,22 @@ def generate_ai_response_with_action_parsing(
         📞 **Personal Trading Contact:** +1 (302) 582-0825
         
         Response Style:
-        - Professional yet friendly trading assistant
+        - Professional EVA Fx premium trading assistant
         - Use currency emojis and trading symbols
-        - Provide clear rate calculations
+        - Provide clear rate calculations with EVA Fx branding
         - Include general contact: +1 (415) 523-8886
         - Share personal contact +1 (302) 582-0825 ONLY for actual trading intent
+        - Always mention "EVA Fx" in responses
         - Focus on FX trading topics primarily
         
         Available Currencies:
         - USD (US Dollar) ➡️ XAF/XOF
         - AED (UAE Dirham) ➡️ XAF/XOF  
         - USDT (Tether) ➡️ XAF/XOF
+        - CNY (Chinese Yuan/RMB) ➡️ XAF/XOF
+        - EUR (Euro) ➡️ XAF/XOF
         
-        For non-FX topics, provide brief helpful responses but always redirect to currency services.
+        For non-FX topics, provide brief helpful responses but always redirect to EVA Fx currency services.
         Recent User Information:
         {memories}
         """.format(
@@ -1272,13 +1275,13 @@ def handle_fx_commands(message: str) -> Optional[str]:
     if any(keyword in message_lower for keyword in ['rate', 'rates']):
         return fx_trader.get_daily_rates()
     
-    # Check for general rate/exchange keywords including XOF
-    if any(keyword in message_lower for keyword in ['exchange', 'fx', 'currency', 'price', 'usd', 'aed', 'usdt', 'xaf', 'xof']):
+    # Check for general rate/exchange keywords including new currencies
+    if any(keyword in message_lower for keyword in ['exchange', 'fx', 'currency', 'price', 'usd', 'aed', 'usdt', 'xaf', 'xof', 'cny', 'rmb', 'yuan', 'eur', 'euro']):
         if any(keyword in message_lower for keyword in ['today', 'current', 'now', 'latest', 'daily']):
             return fx_trader.get_daily_rates()
     
-    # Check for exchange calculations (e.g., "100 USD", "500 AED", "1000 USDT")
-    exchange_pattern = r'(\d+(?:\.\d+)?)\s*(usd|aed|usdt|tether)\b'
+    # Check for exchange calculations (e.g., "100 USD", "500 CNY", "200 EUR")
+    exchange_pattern = r'(\d+(?:\.\d+)?)\s*(usd|aed|usdt|tether|cny|rmb|yuan|eur|euro)\b'
     match = re.search(exchange_pattern, message_lower)
     if match:
         amount = match.group(1)
@@ -1295,7 +1298,7 @@ def handle_fx_commands(message: str) -> Optional[str]:
     
     if any(keyword in message_lower for keyword in trading_intent_keywords):
         # Extract amount and currency if present
-        trading_pattern = r'(\d+(?:\.\d+)?)\s*(usd|aed|usdt|tether|dollars?|dirhams?)\b'
+        trading_pattern = r'(\d+(?:\.\d+)?)\s*(usd|aed|usdt|tether|dollars?|dirhams?|cny|rmb|yuan|eur|euro)\b'
         trade_match = re.search(trading_pattern, message_lower)
         
         if trade_match:
@@ -1305,6 +1308,10 @@ def handle_fx_commands(message: str) -> Optional[str]:
                 currency = 'USD'
             elif currency in ['dirham', 'dirhams']:
                 currency = 'AED'
+            elif currency in ['rmb', 'yuan']:
+                currency = 'CNY'
+            elif currency in ['euro']:
+                currency = 'EUR'
             
             # Return trading process information
             return fx_trader.get_trading_process_info(amount, currency)
@@ -1339,45 +1346,50 @@ To help you with your trade, please specify:
     # Check for subscription commands
     if any(keyword in message_lower for keyword in ['subscribe', 'daily', 'automatic', 'alerts']):
         return f"""
-📬 **DAILY RATE SUBSCRIPTION**
+📬 **EVA FX DAILY SUBSCRIPTION**
 
 🕘 **Automatic daily rates at 9:00 AM Gulf Time**
 
 Features:
-• Daily rate broadcasts
-• Live market updates  
-• Professional FX insights
-• XAF & XOF rates included
+• Daily rate broadcasts from EVA Fx
+• Live international market updates  
+• Professional FX insights & analysis
+• XAF & XOF rates for all currencies
 
-📞 **Contact:** +1 (415) 523-8886
-⚠️ AI FX Trading Service
+📞 **Contact EVA Fx:** +1 (415) 523-8886
+⚠️ Premium EVA Fx Trading Service
         """.strip()
     
     # Check for general FX greetings/help
     if any(keyword in message_lower for keyword in ['hello', 'hi', 'help', 'start', 'menu']):
         return f"""
-🏦 **Welcome to FX Trading!** 💱
-💼 *AI FX Trading Assistant*
+🏦 **Welcome to EVA Fx!** 💱
+💼 *Premium Currency Exchange Service*
 
 **Available Commands:**
 • "rates" - Get current XAF & XOF exchange rates
 • "100 USD" - Calculate XAF/XOF equivalent for any amount
-• "500 AED" - Calculate XAF/XOF equivalent for AED
+• "500 CNY" - Calculate XAF/XOF equivalent for Chinese Yuan
+• "200 EUR" - Calculate XAF/XOF equivalent for Euro
 • "1000 USDT" - Calculate XAF/XOF equivalent for USDT
 
 **Supported Currencies:**
 • USD (US Dollar) to XAF/XOF
 • AED (UAE Dirham) to XAF/XOF
 • USDT (Tether) to XAF/XOF
+• CNY (Chinese Yuan/RMB) to XAF/XOF
+• EUR (Euro) to XAF/XOF
 
-**Features:**
-• Live rates from market data
-• XOF rates with better markup (3.5%)
-• 24/7 availability
+**EVA Fx Features:**
+• Live rates from international market data
+• Premium rates for China & Europe
+• XOF rates with better markup
+• 24/7 global availability
 • Real-time calculations
 • Daily rate broadcasts at 9AM, 3PM, 7PM Gulf Time
+• Global payment management (China, Europe, Africa)
 
-📞 **Contact:** +1 (415) 523-8886
+📞 **Contact EVA Fx:** +1 (415) 523-8886
 Send "rates" to get started! 📈
         """.strip()
     
