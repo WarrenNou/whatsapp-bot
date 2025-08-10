@@ -299,36 +299,47 @@ Rate: 1 {currency} = {rate:,} {target_currency}
 
 📋 **TO COMPLETE THIS TRADE:**
 
-**STEP 1: DEPOSIT REQUIREMENTS**
-• You must deposit cash equivalent in {target_currency}
-• Bank deposit/transfer (versement) required
-• Mobile money deposit accepted
+**STEP 1: DEPOSIT TO DEDICATED ACCOUNT**
+• Deposit cash equivalent in {target_currency} to our dedicated account
+• Bank account details will be shared when you're ready to trade
+• Account details vary by your country/region
+• Mobile money transfers accepted (MTN, Orange Money, etc.)
 
-**STEP 2: PROOF OF DEPOSIT**
-• Share deposit slip/receipt
-• Include transaction reference
-• Photo must be clear and readable
+**STEP 2: SUBMIT DEPOSIT PROOF**
+• Send clear photo of deposit slip/receipt
+• Include transaction reference number
+• Specify amount deposited and bank/operator used
+• Receipt must show your name and transaction date
 
-**STEP 3: VERIFICATION**
-• We verify your deposit
-• Transaction amount must match exactly
-• Processing time: 15-30 minutes
+**STEP 3: VERIFICATION PROCESS** 
+• Our team verifies your deposit (15-30 minutes)
+• Transaction amount must match your order exactly
+• We check with bank/mobile operator for authenticity
+• Fake or altered receipts are automatically rejected
 
-**STEP 4: CURRENCY EXCHANGE**
-• We release your {currency} after verification
-• Digital transfer for USDT/USD
-• Cash pickup available for some locations
+**STEP 4: CURRENCY RELEASE**
+• {currency} released after successful verification
+• USDT/USD: Digital wallet transfer
+• Cash pickup available in major cities
+• International transfers to China & Europe supported
 
-⚠️ **IMPORTANT NOTES:**
-• No deposit = No exchange
-• Fake receipts will be rejected
-• All deposits are verified before processing
-• Refunds take 24-48 hours if needed
+🌍 **GLOBAL PAYMENT MANAGEMENT:**
+• **China**: Bank transfers, Alipay, WeChat Pay supported
+• **Europe**: SEPA transfers, major European banks
+• **Africa**: Local banks, mobile money operators
+• **Middle East**: Banks and exchange houses
 
-🔒 **SECURITY:** We only process verified deposits
-📞 **Questions:** +1 (415) 523-8886
+⚠️ **SECURITY POLICY:**
+• No deposit = No exchange (strict policy)
+• All receipts undergo verification
+• Deposits to personal accounts not accepted
+• Only use our official dedicated accounts
 
-**Ready to proceed with this trade?**
+🔒 **VERIFICATION:** Professional deposit verification system
+📞 **General Contact:** +1 (415) 523-8886
+📞 **Trading Support:** Contact will be shared when ready
+
+**Ready to proceed? We'll share account details next.**
             """.strip()
             
         except ValueError:

@@ -1064,12 +1064,32 @@ def generate_ai_response_with_action_parsing(
         - Specializing in African currency exchange
         
         IMPORTANT - ACTUAL TRADING PROCESS:
-        When clients show SERIOUS INTENT to trade (not just asking for rates), explain the trading process:
-        1. They must deposit cash equivalent in XAF/XOF first (versement/bank deposit)
-        2. Share deposit slip/receipt for verification
-        3. We verify the deposit (15-30 minutes)
-        4. We release their USD/USDT/AED after verification
-        5. No deposit = No exchange (security policy)
+        When clients show SERIOUS INTENT to trade (not just asking for rates), explain the comprehensive trading process:
+        
+        1. DEDICATED ACCOUNT DEPOSIT:
+           - Client deposits XAF/XOF equivalent to dedicated bank account
+           - Account details shared when ready to trade (varies by country)
+           - Mobile money accepted (MTN, Orange Money, etc.)
+           - Only official dedicated accounts, never personal accounts
+        
+        2. DEPOSIT VERIFICATION:
+           - Client sends clear photo of deposit slip/receipt
+           - Must include transaction reference and depositor name
+           - Our team verifies with bank/operator (15-30 minutes)
+           - Fake or altered receipts automatically rejected
+        
+        3. CURRENCY RELEASE:
+           - USD/USDT/AED released after successful verification
+           - Digital transfers for crypto/USD
+           - International payment management available
+        
+        4. GLOBAL PAYMENT SUPPORT:
+           - China: Bank transfers, Alipay, WeChat Pay
+           - Europe: SEPA transfers, major European banks
+           - Africa: Local banks, mobile money operators
+           - Middle East: Banks and exchange houses
+        
+        SECURITY POLICY: No deposit = No exchange (strict enforcement)
         
         PERSONAL CONTACT FOR REAL TRADES:
         Only share this contact when you're confident the client wants to actually trade (not just getting rates):
@@ -1299,9 +1319,21 @@ To help you with your trade, please specify:
 
 **Example:** "I want to trade 500 USD to XAF"
 
+� **TRADING PROCESS OVERVIEW:**
+1. **Deposit to dedicated account** (details provided when ready)
+2. **Submit deposit slip** for verification
+3. **Verification** (15-30 minutes)
+4. **Receive your currency** via preferred method
+
+🌍 **Global Payment Support:**
+• **China**: Bank transfers, Alipay, WeChat Pay
+• **Europe**: SEPA transfers, major banks
+• **Africa**: Local banks, mobile money
+• **Middle East**: Banks and exchange houses
+
 📞 **General inquiries:** +1 (415) 523-8886
 
-💡 **Note:** You'll need to deposit the equivalent amount in XAF/XOF first before we can process your exchange.
+💡 **Security:** Only official dedicated accounts used for deposits
             """.strip()
     
     # Check for subscription commands
