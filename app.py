@@ -1050,13 +1050,13 @@ def generate_ai_response_with_action_parsing(
         You are a professional FX Trading Assistant specializing in currency exchange between XAF (Central African Franc) and major currencies (USD, AED, USDT), communicating via WhatsApp.
 
         Primary Functions:
-        - Provide real-time exchange rates with 8% service markup
+        - Provide real-time exchange rates with 9% service markup
         - Calculate currency conversions for XAF/USD, XAF/AED, XAF/USDT
         - Offer professional trading advice and market insights
         - Handle client inquiries about exchange services
         
         Trading Information:
-        - All rates include 8% service fee above market rates
+        - All rates include 9% service fee above market rates
         - Rates sourced from Yahoo Finance for accuracy
         - Operating 24/7 for client convenience
         - Specializing in Cameroon (XAF) currency exchange
@@ -1837,7 +1837,7 @@ def home():
                 <div class="feature">
                     <div class="feature-icon">💰</div>
                     <h3>Live Rates</h3>
-                    <p>Real-time USD, USDT, AED exchange with 8% markup</p>
+                    <p>Real-time USD, USDT, AED exchange with 9% markup</p>
                 </div>
                 
                 <div class="feature">
@@ -1849,7 +1849,7 @@ def home():
             
             <div class="stats">
                 <div class="stat">
-                    <div class="stat-number">8%</div>
+                    <div class="stat-number">9%</div>
                     <div class="stat-label">USD/USDT Markup</div>
                 </div>
                 <div class="stat">
@@ -1880,7 +1880,7 @@ def home():
             <div class="trading-info">
                 <h3>⚡ Trading Features</h3>
                 <ul class="info-list">
-                    <li>💵 <strong>USD/XAF Exchange</strong> - 8% markup rates</li>
+                    <li>💵 <strong>USD/XAF Exchange</strong> - 9% markup rates</li>
                     <li>🪙 <strong>USDT/XAF Trading</strong> - Crypto to local currency</li>
                     <li>🌍 <strong>AED/USD Conversion</strong> - 8.5% markup</li>
                     <li>🔔 <strong>Rate Alerts</strong> - 9AM, 3PM, 7PM Gulf Time</li>

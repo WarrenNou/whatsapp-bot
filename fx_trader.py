@@ -19,7 +19,7 @@ class FXTrader:
             'XAF_AED': 0.0,
             'last_updated': ''
         }
-        self.markup_percentage = 8  # 8% markup on USD/USDT rates
+        self.markup_percentage = 9  # 9% markup on USD/USDT rates
         self.aed_markup_percentage = 8.5  # 8.5% markup on AED rates
         self.api_base_url = "https://api.exchangerate-api.com/v4/latest"
     
@@ -131,6 +131,7 @@ class FXTrader:
 💰 **Quick Calculate:**
 Reply: "100 USD" or "500 AED"
 
+📞 **WhatsApp Trading:** +1 (415) 523-8886
 🌐 **Evocash.org** - Your Trusted FX Partner
 ⚠️ *Disclaimer: Rates are AI-generated for reference. Contact us for actual transactions.*
 
@@ -158,6 +159,7 @@ Reply: "100 USD" or "500 AED"
 Rate: 1 USD = {self.base_rates['XAF_USD']:,} XAF
 *Includes {self.markup_percentage}% service fee*
 
+📞 **WhatsApp Trading:** +1 (415) 523-8886
 🌐 **Evocash.org** - Contact us to complete transaction
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *AI-generated rate for reference*
@@ -173,6 +175,7 @@ Rate: 1 USD = {self.base_rates['XAF_USD']:,} XAF
 Rate: 1 USDT = {self.base_rates['XAF_USDT']:,} XAF
 *Includes {self.markup_percentage}% service fee*
 
+📞 **WhatsApp Trading:** +1 (415) 523-8886
 🌐 **Evocash.org** - Contact us to complete transaction
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *AI-generated rate for reference*
@@ -188,6 +191,7 @@ Rate: 1 USDT = {self.base_rates['XAF_USDT']:,} XAF
 Rate: 1 AED = {self.base_rates['XAF_AED']:,} XAF
 *Includes {self.aed_markup_percentage}% service fee*
 
+📞 **WhatsApp Trading:** +1 (415) 523-8886
 🌐 **Evocash.org** - Contact us to complete transaction
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *AI-generated rate for reference*
