@@ -52,12 +52,32 @@ logger.addHandler(console_handler)
 # Initialize Flask app
 app = Flask(__name__)
 
-# Setup rate limiting
+# Setup rate limiting with fallback
+def get_limiter_storage():
+    """Get appropriate storage for rate limiter based on Redis availability"""
+    redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    
+    # On Render, use memory storage initially to prevent crashes
+    if os.getenv('RENDER'):
+        logger.info("Using memory storage for rate limiter on Render deployment")
+        return "memory://"
+    
+    # For local development, try Redis first
+    try:
+        import redis
+        test_client = redis.from_url(redis_url, socket_connect_timeout=5)
+        test_client.ping()
+        logger.info("Using Redis storage for rate limiter")
+        return redis_url
+    except Exception as e:
+        logger.warning(f"Redis not available for rate limiter, using memory storage: {e}")
+        return "memory://"
+
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
-    storage_uri=os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    storage_uri=get_limiter_storage()
 )
 
 # Error handling for Redis connection
@@ -1502,6 +1522,7 @@ def webhook() -> Response:
         return str(resp)
 
 @app.route('/health', methods=['GET'])
+@limiter.exempt
 def health_check() -> Dict:
     """
     Health check endpoint for monitoring
@@ -1510,8 +1531,16 @@ def health_check() -> Dict:
         Dict with service status
     """
     try:
-        # Check Redis connection
-        redis_status = "ok" if redis_client.ping() else "error"
+        # Check Redis connection safely
+        redis_status = "fallback"
+        try:
+            if redis_client and hasattr(redis_client, 'ping'):
+                redis_client.ping()
+                redis_status = "ok"
+            else:
+                redis_status = "fallback"
+        except Exception:
+            redis_status = "fallback"
         
         # Check FX trader functionality
         fx_status = "ok"
@@ -1556,12 +1585,480 @@ def health_check() -> Dict:
         
         return jsonify(status), 500
 
+@app.route('/', methods=['GET'])
+def home():
+    """Home page with bot information and instructions"""
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Evocash FX Trading Bot - AI-Powered Currency Exchange</title>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                background: #0a0a0a;
+                color: #ffffff;
+                line-height: 1.6;
+                overflow-x: hidden;
+            }
+            
+            /* Animated Background */
+            .bg-animation {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #f5576c);
+                background-size: 400% 400%;
+                animation: gradientShift 15s ease infinite;
+            }
+            
+            @keyframes gradientShift {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+            }
+            
+            /* Floating particles */
+            .particles {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+            }
+            
+            .particle {
+                position: absolute;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 50%;
+                animation: float 20s infinite linear;
+            }
+            
+            @keyframes float {
+                0% {
+                    transform: translateY(100vh) rotate(0deg);
+                    opacity: 0;
+                }
+                10% {
+                    opacity: 1;
+                }
+                90% {
+                    opacity: 1;
+                }
+                100% {
+                    transform: translateY(-10vh) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+            
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px;
+                position: relative;
+                z-index: 1;
+            }
+            
+            /* Header */
+            .header {
+                text-align: center;
+                padding: 60px 0;
+                animation: fadeInUp 1s ease-out;
+            }
+            
+            .logo {
+                width: 120px;
+                height: 120px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                border-radius: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 4rem;
+                margin: 0 auto 30px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
+            
+            .title {
+                font-size: clamp(2.5rem, 5vw, 4rem);
+                font-weight: 800;
+                margin-bottom: 20px;
+                background: linear-gradient(135deg, #fff, #f0f0f0);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                text-shadow: 0 0 30px rgba(255,255,255,0.3);
+            }
+            
+            .subtitle {
+                font-size: 1.4rem;
+                color: rgba(255,255,255,0.8);
+                margin-bottom: 40px;
+                font-weight: 300;
+            }
+            
+            /* Cards */
+            .cards-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 30px;
+                margin: 60px 0;
+            }
+            
+            .card {
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(20px);
+                border-radius: 20px;
+                padding: 40px 30px;
+                text-align: center;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                transition: all 0.3s ease;
+                animation: fadeInUp 1s ease-out;
+                animation-delay: 0.2s;
+                animation-fill-mode: both;
+            }
+            
+            .card:hover {
+                transform: translateY(-10px);
+                box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+                background: rgba(255, 255, 255, 0.15);
+            }
+            
+            .card-icon {
+                width: 80px;
+                height: 80px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                border-radius: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 2rem;
+                margin: 0 auto 20px;
+                color: white;
+            }
+            
+            .card h3 {
+                font-size: 1.5rem;
+                margin-bottom: 15px;
+                font-weight: 600;
+            }
+            
+            .card p {
+                color: rgba(255,255,255,0.8);
+                line-height: 1.6;
+            }
+            
+            /* WhatsApp CTA */
+            .whatsapp-cta {
+                background: linear-gradient(135deg, #25d366, #128c7e);
+                border-radius: 25px;
+                padding: 50px 40px;
+                text-align: center;
+                margin: 60px 0;
+                box-shadow: 0 25px 50px rgba(37, 211, 102, 0.3);
+                animation: fadeInUp 1s ease-out;
+                animation-delay: 0.4s;
+                animation-fill-mode: both;
+            }
+            
+            .whatsapp-cta h2 {
+                font-size: 2.5rem;
+                margin-bottom: 20px;
+                font-weight: 700;
+            }
+            
+            .whatsapp-number {
+                font-size: 2rem;
+                font-weight: 700;
+                background: rgba(255,255,255,0.2);
+                padding: 20px 40px;
+                border-radius: 15px;
+                display: inline-block;
+                margin: 20px 0;
+                transition: all 0.3s ease;
+            }
+            
+            .whatsapp-number:hover {
+                background: rgba(255,255,255,0.3);
+                transform: scale(1.05);
+            }
+            
+            .cta-button {
+                display: inline-block;
+                background: #ffffff;
+                color: #25d366;
+                padding: 15px 40px;
+                border-radius: 50px;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 1.1rem;
+                margin-top: 20px;
+                transition: all 0.3s ease;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            }
+            
+            .cta-button:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            }
+            
+            /* Stats Section */
+            .stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 30px;
+                margin: 60px 0;
+            }
+            
+            .stat {
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(20px);
+                border-radius: 20px;
+                padding: 30px 20px;
+                text-align: center;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .stat-number {
+                font-size: 2.5rem;
+                font-weight: 800;
+                background: linear-gradient(135deg, #f093fb, #f5576c);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            
+            .stat-label {
+                color: rgba(255,255,255,0.8);
+                font-weight: 500;
+                margin-top: 10px;
+            }
+            
+            /* Status indicator */
+            .status {
+                position: fixed;
+                top: 30px;
+                right: 30px;
+                background: rgba(0, 255, 0, 0.2);
+                border: 2px solid #00ff00;
+                border-radius: 25px;
+                padding: 10px 20px;
+                font-weight: 600;
+                animation: pulse-green 2s infinite;
+                z-index: 1000;
+            }
+            
+            @keyframes pulse-green {
+                0%, 100% {
+                    box-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+                }
+                50% {
+                    box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+                }
+            }
+            
+            .footer {
+                text-align: center;
+                padding: 40px 0;
+                color: rgba(255,255,255,0.6);
+                border-top: 1px solid rgba(255,255,255,0.1);
+            }
+            
+            /* Animations */
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            /* Responsive */
+            @media (max-width: 768px) {
+                .container {
+                    padding: 10px;
+                }
+                
+                .header {
+                    padding: 40px 0;
+                }
+                
+                .whatsapp-cta {
+                    padding: 30px 20px;
+                }
+                
+                .whatsapp-number {
+                    font-size: 1.5rem;
+                    padding: 15px 25px;
+                }
+            }
+        </link>
+    </head>
+    <body>
+        <div class="bg-animation"></div>
+        
+        <div class="particles">
+            <div class="particle" style="left: 10%; width: 20px; height: 20px; animation-delay: 0s;"></div>
+            <div class="particle" style="left: 20%; width: 15px; height: 15px; animation-delay: 2s;"></div>
+            <div class="particle" style="left: 30%; width: 25px; height: 25px; animation-delay: 4s;"></div>
+            <div class="particle" style="left: 40%; width: 18px; height: 18px; animation-delay: 6s;"></div>
+            <div class="particle" style="left: 50%; width: 22px; height: 22px; animation-delay: 8s;"></div>
+            <div class="particle" style="left: 60%; width: 16px; height: 16px; animation-delay: 10s;"></div>
+            <div class="particle" style="left: 70%; width: 24px; height: 24px; animation-delay: 12s;"></div>
+            <div class="particle" style="left: 80%; width: 19px; height: 19px; animation-delay: 14s;"></div>
+            <div class="particle" style="left: 90%; width: 21px; height: 21px; animation-delay: 16s;"></div>
+        </div>
+        
+        <div class="status">
+            <i class="fas fa-circle" style="color: #00ff00; font-size: 0.8rem;"></i>
+            ONLINE
+        </div>
+        
+        <div class="container">
+            <div class="header">
+                <div class="logo">💱</div>
+                <h1 class="title">Evocash FX</h1>
+                <p class="subtitle">Next-Generation AI Currency Exchange Platform</p>
+            </div>
+            
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>AI-Powered Trading</h3>
+                    <p>Advanced GPT-4 integration provides intelligent market analysis and personalized trading recommendations in real-time.</p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Live Market Rates</h3>
+                    <p>Real-time USD, USDT, and AED exchange rates with competitive 8% markup, updated continuously via premium APIs.</p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fab fa-whatsapp"></i>
+                    </div>
+                    <h3>WhatsApp Integration</h3>
+                    <p>Seamless trading experience directly through WhatsApp - no apps to download, just instant messaging.</p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3>24/7 Availability</h3>
+                    <p>Automated daily broadcasts at 9AM, 3PM & 7PM Gulf Time, plus instant responses whenever you need them.</p>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number">8%</div>
+                    <div class="stat-label">USD/USDT Markup</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">8.5%</div>
+                    <div class="stat-label">AED Markup</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Service Uptime</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">3x</div>
+                    <div class="stat-label">Daily Updates</div>
+                </div>
+            </div>
+            
+            <div class="whatsapp-cta">
+                <h2><i class="fab fa-whatsapp"></i> Start Trading Now!</h2>
+                <p>Connect with our AI trading assistant instantly</p>
+                <div class="whatsapp-number">+1 (415) 523-8886</div>
+                <p style="margin: 20px 0;"><strong>Try saying:</strong> "What's the USD rate?" or "I want to exchange $1000"</p>
+                <a href="https://wa.me/14155238886?text=Hi!%20I%27d%20like%20to%20check%20exchange%20rates" 
+                   class="cta-button" target="_blank">
+                    <i class="fab fa-whatsapp"></i> Open WhatsApp
+                </a>
+            </div>
+            
+            <div class="footer">
+                <p><strong>Evocash.org</strong> - Powered by OpenAI • Built on Flask & Twilio</p>
+                <p style="margin-top: 10px;">
+                    <i class="fas fa-shield-alt"></i> 
+                    This is an AI trading assistant. All rates are for reference purposes.
+                </p>
+                <p style="margin-top: 5px; font-size: 0.9rem;">
+                    Last updated: """ + datetime.now(pytz.utc).strftime('%Y-%m-%d %H:%M:%S UTC') + """
+                </p>
+            </div>
+        </div>
+        
+        <script>
+            // Add some interactive elements
+            document.addEventListener('DOMContentLoaded', function() {
+                // Animate cards on scroll
+                const cards = document.querySelectorAll('.card');
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.style.animation = 'fadeInUp 0.6s ease-out forwards';
+                        }
+                    });
+                });
+                
+                cards.forEach(card => observer.observe(card));
+                
+                // Add click effect to WhatsApp number
+                const whatsappNumber = document.querySelector('.whatsapp-number');
+                whatsappNumber.addEventListener('click', function() {
+                    navigator.clipboard.writeText('+14155238886').then(() => {
+                        const original = this.textContent;
+                        this.textContent = '📋 Copied!';
+                        setTimeout(() => {
+                            this.textContent = original;
+                        }, 2000);
+                    });
+                });
+            });
+        </script>
+    </body>
+    </html>
+    """
+
 @app.route('/ping', methods=['GET'])
+@limiter.exempt
 def ping():
     """Simple ping endpoint for basic keep-alive"""
     return {"status": "alive", "timestamp": datetime.now(pytz.utc).isoformat()}
 
 @app.route('/keep-alive', methods=['GET', 'POST'])
+@limiter.exempt
 def keep_alive():
     """Dedicated keep-alive endpoint"""
     return {"message": "Server is alive", "service": "evocash-fx-bot"}
