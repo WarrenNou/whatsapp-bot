@@ -1605,115 +1605,67 @@ def home():
             
             body {
                 font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                background: #0a0a0a;
-                color: #ffffff;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                color: #333;
                 line-height: 1.6;
-                overflow-x: hidden;
-            }
-            
-            /* Animated Background */
-            .bg-animation {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                z-index: -1;
-                background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #f5576c);
-                background-size: 400% 400%;
-                animation: gradientShift 15s ease infinite;
-            }
-            
-            @keyframes gradientShift {
-                0% { background-position: 0% 50%; }
-                50% { background-position: 100% 50%; }
-                100% { background-position: 0% 50%; }
-            }
-            
-            /* Floating particles */
-            .particles {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                z-index: -1;
-            }
-            
-            .particle {
-                position: absolute;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 50%;
-                animation: float 20s infinite linear;
-            }
-            
-            @keyframes float {
-                0% {
-                    transform: translateY(100vh) rotate(0deg);
-                    opacity: 0;
-                }
-                10% {
-                    opacity: 1;
-                }
-                90% {
-                    opacity: 1;
-                }
-                100% {
-                    transform: translateY(-10vh) rotate(360deg);
-                    opacity: 0;
-                }
+                min-height: 100vh;
             }
             
             .container {
                 max-width: 1200px;
                 margin: 0 auto;
                 padding: 20px;
-                position: relative;
-                z-index: 1;
             }
             
             /* Header */
             .header {
                 text-align: center;
-                padding: 60px 0;
-                animation: fadeInUp 1s ease-out;
+                padding: 40px 0;
+                background: white;
+                border-radius: 20px;
+                margin-bottom: 30px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             }
             
             .logo {
-                width: 120px;
-                height: 120px;
+                width: 100px;
+                height: 100px;
                 background: linear-gradient(135deg, #667eea, #764ba2);
-                border-radius: 30px;
+                border-radius: 25px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 4rem;
-                margin: 0 auto 30px;
-                box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-                animation: pulse 2s infinite;
-            }
-            
-            @keyframes pulse {
-                0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.05); }
+                font-size: 3rem;
+                margin: 0 auto 25px;
+                color: white;
+                box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
             }
             
             .title {
-                font-size: clamp(2.5rem, 5vw, 4rem);
+                font-size: 3rem;
                 font-weight: 800;
-                margin-bottom: 20px;
-                background: linear-gradient(135deg, #fff, #f0f0f0);
+                margin-bottom: 15px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
-                text-shadow: 0 0 30px rgba(255,255,255,0.3);
             }
             
             .subtitle {
-                font-size: 1.4rem;
-                color: rgba(255,255,255,0.8);
-                margin-bottom: 40px;
-                font-weight: 300;
+                font-size: 1.3rem;
+                color: #666;
+                margin-bottom: 20px;
+                font-weight: 400;
+            }
+            
+            .status-badge {
+                display: inline-block;
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+                padding: 10px 25px;
+                border-radius: 50px;
+                font-weight: 600;
+                box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
             }
             
             /* Cards */
@@ -1725,22 +1677,18 @@ def home():
             }
             
             .card {
-                background: rgba(255, 255, 255, 0.1);
-                backdrop-filter: blur(20px);
+                background: white;
                 border-radius: 20px;
                 padding: 40px 30px;
                 text-align: center;
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 15px 35px rgba(0,0,0,0.08);
                 transition: all 0.3s ease;
-                animation: fadeInUp 1s ease-out;
-                animation-delay: 0.2s;
-                animation-fill-mode: both;
+                border: 1px solid rgba(0,0,0,0.05);
             }
             
             .card:hover {
-                transform: translateY(-10px);
-                box-shadow: 0 30px 60px rgba(0,0,0,0.3);
-                background: rgba(255, 255, 255, 0.15);
+                transform: translateY(-8px);
+                box-shadow: 0 25px 50px rgba(0,0,0,0.15);
             }
             
             .card-icon {
@@ -1760,10 +1708,11 @@ def home():
                 font-size: 1.5rem;
                 margin-bottom: 15px;
                 font-weight: 600;
+                color: #333;
             }
             
             .card p {
-                color: rgba(255,255,255,0.8);
+                color: #666;
                 line-height: 1.6;
             }
             
@@ -1917,30 +1866,15 @@ def home():
         </link>
     </head>
     <body>
-        <div class="bg-animation"></div>
-        
-        <div class="particles">
-            <div class="particle" style="left: 10%; width: 20px; height: 20px; animation-delay: 0s;"></div>
-            <div class="particle" style="left: 20%; width: 15px; height: 15px; animation-delay: 2s;"></div>
-            <div class="particle" style="left: 30%; width: 25px; height: 25px; animation-delay: 4s;"></div>
-            <div class="particle" style="left: 40%; width: 18px; height: 18px; animation-delay: 6s;"></div>
-            <div class="particle" style="left: 50%; width: 22px; height: 22px; animation-delay: 8s;"></div>
-            <div class="particle" style="left: 60%; width: 16px; height: 16px; animation-delay: 10s;"></div>
-            <div class="particle" style="left: 70%; width: 24px; height: 24px; animation-delay: 12s;"></div>
-            <div class="particle" style="left: 80%; width: 19px; height: 19px; animation-delay: 14s;"></div>
-            <div class="particle" style="left: 90%; width: 21px; height: 21px; animation-delay: 16s;"></div>
-        </div>
-        
-        <div class="status">
-            <i class="fas fa-circle" style="color: #00ff00; font-size: 0.8rem;"></i>
-            ONLINE
-        </div>
-        
         <div class="container">
             <div class="header">
                 <div class="logo">💱</div>
                 <h1 class="title">Evocash FX</h1>
                 <p class="subtitle">Next-Generation AI Currency Exchange Platform</p>
+                <div class="status-badge">
+                    <i class="fas fa-circle" style="font-size: 0.8rem; margin-right: 8px;"></i>
+                    ONLINE & READY
+                </div>
             </div>
             
             <div class="cards-grid">
