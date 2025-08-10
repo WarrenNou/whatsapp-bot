@@ -22,7 +22,8 @@ class FXTrader:
             'XOF_AED': 0.0,
             'last_updated': ''
         }
-        self.markup_percentage = 9  # 9% markup on USD/USDT rates
+        self.usd_markup_percentage = 8  # 8% markup on USD rates
+        self.usdt_markup_percentage = 8.5  # 8.5% markup on USDT rates
         self.aed_markup_percentage = 8.5  # 8.5% markup on AED rates
         self.xof_markup_percentage = 3.5  # 3.5% markup on XOF rates
         self.api_base_url = "https://api.exchangerate-api.com/v4/latest"
@@ -112,24 +113,25 @@ class FXTrader:
                 return False
             
             # Calculate rates with different markups
-            usd_markup_multiplier = 1 + (self.markup_percentage / 100)
+            usd_markup_multiplier = 1 + (self.usd_markup_percentage / 100)
+            usdt_markup_multiplier = 1 + (self.usdt_markup_percentage / 100)
             aed_markup_multiplier = 1 + (self.aed_markup_percentage / 100)
             xof_markup_multiplier = 1 + (self.xof_markup_percentage / 100)
             
-            # XAF/USD with 9% markup (how much XAF to buy 1 USD from us)
+            # XAF/USD with 8% markup (how much XAF to buy 1 USD from us)
             self.base_rates['XAF_USD'] = round(usd_xaf_rate * usd_markup_multiplier, 2)
             
-            # XAF/USDT (assuming USDT ≈ USD) with 9% markup
-            self.base_rates['XAF_USDT'] = round(usd_xaf_rate * usd_markup_multiplier, 2)
+            # XAF/USDT with 8.5% markup
+            self.base_rates['XAF_USDT'] = round(usd_xaf_rate * usdt_markup_multiplier, 2)
             
             # XAF/AED with 8.5% markup
             # First convert: AED -> USD -> XAF, then add markup
             aed_xaf_rate = aed_usd_rate * usd_xaf_rate
             self.base_rates['XAF_AED'] = round(aed_xaf_rate * aed_markup_multiplier, 2)
             
-            # XOF rates with 3.5% markup
-            self.base_rates['XOF_USD'] = round(usd_xof_rate * xof_markup_multiplier, 2)
-            self.base_rates['XOF_USDT'] = round(usd_xof_rate * xof_markup_multiplier, 2)
+            # XOF rates with 3.5% markup (unchanged)
+            self.base_rates['XOF_USD'] = round(usd_xof_rate * xof_markup_multiplier, 2)  # 3.5% for USD
+            self.base_rates['XOF_USDT'] = round(usd_xof_rate * xof_markup_multiplier, 2)  # 3.5% for USDT
             # XOF/AED: AED -> USD -> XOF, then add markup
             aed_xof_rate = aed_usd_rate * usd_xof_rate
             self.base_rates['XOF_AED'] = round(aed_xof_rate * xof_markup_multiplier, 2)
