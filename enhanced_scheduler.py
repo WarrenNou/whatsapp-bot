@@ -22,7 +22,16 @@ class AdvancedScheduler:
         self.whatsapp_numbers = whatsapp_numbers or []
         self.gulf_tz = pytz.timezone('Asia/Dubai')  # Gulf time (UAE)
         self.from_number = os.getenv('TWILIO_WHATSAPP_NUMBER')
-        self.server_url = server_url or f"http://localhost:{os.getenv('PORT', 5001)}"
+        
+        # Auto-detect server URL for different environments
+        if server_url:
+            self.server_url = server_url
+        elif os.getenv('RENDER'):
+            # On Render, use the service URL
+            self.server_url = "https://whatsapp-bot-96xm.onrender.com"
+        else:
+            # Local development
+            self.server_url = f"http://localhost:{os.getenv('PORT', 5001)}"
         
     def add_subscriber(self, phone_number):
         """Add a phone number to receive daily rate updates"""
