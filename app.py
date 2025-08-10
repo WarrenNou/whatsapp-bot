@@ -1594,8 +1594,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Evocash FX Trading Bot - AI-Powered Currency Exchange</title>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <title>Evocash FX Trading Bot</title>
         <style>
             * {
                 margin: 0;
@@ -1604,310 +1603,247 @@ def home():
             }
             
             body {
-                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                color: #333;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: #1a1a2e;
+                color: white;
                 line-height: 1.6;
                 min-height: 100vh;
             }
             
             .container {
-                max-width: 1200px;
+                max-width: 1000px;
                 margin: 0 auto;
                 padding: 20px;
             }
             
-            /* Header */
             .header {
                 text-align: center;
-                padding: 40px 0;
-                background: white;
+                padding: 60px 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 border-radius: 20px;
-                margin-bottom: 30px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                margin-bottom: 40px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.3);
             }
             
             .logo {
-                width: 100px;
-                height: 100px;
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                border-radius: 25px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 3rem;
-                margin: 0 auto 25px;
-                color: white;
-                box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+                font-size: 5rem;
+                margin-bottom: 20px;
             }
             
             .title {
-                font-size: 3rem;
-                font-weight: 800;
+                font-size: 3.5rem;
+                font-weight: 900;
                 margin-bottom: 15px;
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
             }
             
             .subtitle {
-                font-size: 1.3rem;
-                color: #666;
-                margin-bottom: 20px;
-                font-weight: 400;
+                font-size: 1.4rem;
+                opacity: 0.9;
+                margin-bottom: 25px;
             }
             
-            .status-badge {
+            .status {
                 display: inline-block;
-                background: linear-gradient(135deg, #10b981, #059669);
-                color: white;
-                padding: 10px 25px;
-                border-radius: 50px;
-                font-weight: 600;
-                box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+                background: #00ff88;
+                color: #000;
+                padding: 12px 30px;
+                border-radius: 30px;
+                font-weight: 700;
+                font-size: 1rem;
+                box-shadow: 0 5px 15px rgba(0,255,136,0.3);
             }
             
-            /* Cards */
-            .cards-grid {
+            .features {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
                 gap: 30px;
-                margin: 60px 0;
+                margin: 40px 0;
             }
             
-            .card {
-                background: white;
-                border-radius: 20px;
-                padding: 40px 30px;
+            .feature {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 15px;
+                padding: 30px;
                 text-align: center;
-                box-shadow: 0 15px 35px rgba(0,0,0,0.08);
-                transition: all 0.3s ease;
-                border: 1px solid rgba(0,0,0,0.05);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                transition: transform 0.3s ease;
             }
             
-            .card:hover {
-                transform: translateY(-8px);
-                box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            .feature:hover {
+                transform: translateY(-10px);
             }
             
-            .card-icon {
-                width: 80px;
-                height: 80px;
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                border-radius: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 2rem;
-                margin: 0 auto 20px;
-                color: white;
+            .feature-icon {
+                font-size: 3rem;
+                margin-bottom: 20px;
             }
             
-            .card h3 {
+            .feature h3 {
                 font-size: 1.5rem;
                 margin-bottom: 15px;
-                font-weight: 600;
-                color: #333;
             }
             
-            .card p {
-                color: #666;
-                line-height: 1.6;
-            }
-            
-            /* WhatsApp CTA */
             .whatsapp-cta {
-                background: linear-gradient(135deg, #25d366, #128c7e);
-                border-radius: 25px;
-                padding: 50px 40px;
+                background: #25d366;
+                border-radius: 20px;
+                padding: 50px;
                 text-align: center;
-                margin: 60px 0;
-                box-shadow: 0 25px 50px rgba(37, 211, 102, 0.3);
-                animation: fadeInUp 1s ease-out;
-                animation-delay: 0.4s;
-                animation-fill-mode: both;
+                margin: 50px 0;
+                box-shadow: 0 20px 40px rgba(37, 211, 102, 0.3);
             }
             
             .whatsapp-cta h2 {
                 font-size: 2.5rem;
                 margin-bottom: 20px;
-                font-weight: 700;
+                font-weight: 800;
             }
             
-            .whatsapp-number {
-                font-size: 2rem;
-                font-weight: 700;
+            .phone {
+                font-size: 2.2rem;
+                font-weight: 800;
                 background: rgba(255,255,255,0.2);
                 padding: 20px 40px;
                 border-radius: 15px;
-                display: inline-block;
-                margin: 20px 0;
+                margin: 25px 0;
+                cursor: pointer;
                 transition: all 0.3s ease;
             }
             
-            .whatsapp-number:hover {
+            .phone:hover {
                 background: rgba(255,255,255,0.3);
                 transform: scale(1.05);
             }
             
-            .cta-button {
+            .cta-btn {
                 display: inline-block;
-                background: #ffffff;
+                background: white;
                 color: #25d366;
-                padding: 15px 40px;
+                padding: 18px 40px;
                 border-radius: 50px;
                 text-decoration: none;
-                font-weight: 600;
-                font-size: 1.1rem;
+                font-weight: 700;
+                font-size: 1.2rem;
                 margin-top: 20px;
                 transition: all 0.3s ease;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             }
             
-            .cta-button:hover {
+            .cta-btn:hover {
                 transform: translateY(-3px);
-                box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+                box-shadow: 0 15px 35px rgba(0,0,0,0.3);
             }
             
-            /* Stats Section */
             .stats {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 30px;
-                margin: 60px 0;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 25px;
+                margin: 40px 0;
             }
             
             .stat {
                 background: rgba(255, 255, 255, 0.1);
-                backdrop-filter: blur(20px);
-                border-radius: 20px;
-                padding: 30px 20px;
+                border-radius: 15px;
+                padding: 25px;
                 text-align: center;
                 border: 1px solid rgba(255, 255, 255, 0.2);
             }
             
             .stat-number {
                 font-size: 2.5rem;
-                font-weight: 800;
-                background: linear-gradient(135deg, #f093fb, #f5576c);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
+                font-weight: 900;
+                color: #00ff88;
+                margin-bottom: 10px;
             }
             
             .stat-label {
-                color: rgba(255,255,255,0.8);
-                font-weight: 500;
-                margin-top: 10px;
+                opacity: 0.9;
             }
             
-            /* Status indicator */
-            .status {
-                position: fixed;
-                top: 30px;
-                right: 30px;
-                background: rgba(0, 255, 0, 0.2);
-                border: 2px solid #00ff00;
-                border-radius: 25px;
-                padding: 10px 20px;
-                font-weight: 600;
-                animation: pulse-green 2s infinite;
-                z-index: 1000;
+            .trading-info {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 15px;
+                padding: 30px;
+                margin: 30px 0;
+                backdrop-filter: blur(10px);
             }
             
-            @keyframes pulse-green {
-                0%, 100% {
-                    box-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-                }
-                50% {
-                    box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
-                }
+            .trading-info h3 {
+                font-size: 1.8rem;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+            
+            .info-list {
+                list-style: none;
+            }
+            
+            .info-list li {
+                padding: 12px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                font-size: 1.1rem;
+            }
+            
+            .info-list li:last-child {
+                border-bottom: none;
             }
             
             .footer {
                 text-align: center;
-                padding: 40px 0;
-                color: rgba(255,255,255,0.6);
-                border-top: 1px solid rgba(255,255,255,0.1);
+                padding: 30px;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 15px;
+                margin-top: 40px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
             }
             
-            /* Animations */
-            @keyframes fadeInUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(30px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-            
-            /* Responsive */
             @media (max-width: 768px) {
                 .container {
-                    padding: 10px;
+                    padding: 15px;
                 }
                 
-                .header {
-                    padding: 40px 0;
+                .title {
+                    font-size: 2.5rem;
+                }
+                
+                .phone {
+                    font-size: 1.8rem;
+                    padding: 15px 25px;
                 }
                 
                 .whatsapp-cta {
                     padding: 30px 20px;
                 }
-                
-                .whatsapp-number {
-                    font-size: 1.5rem;
-                    padding: 15px 25px;
-                }
             }
-        </link>
+        </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
                 <div class="logo">💱</div>
-                <h1 class="title">Evocash FX</h1>
-                <p class="subtitle">Next-Generation AI Currency Exchange Platform</p>
-                <div class="status-badge">
-                    <i class="fas fa-circle" style="font-size: 0.8rem; margin-right: 8px;"></i>
-                    ONLINE & READY
-                </div>
+                <h1 class="title">Evocash FX Bot</h1>
+                <p class="subtitle">AI-Powered Currency Exchange Assistant</p>
+                <div class="status">🟢 ONLINE NOW</div>
             </div>
             
-            <div class="cards-grid">
-                <div class="card">
-                    <div class="card-icon">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <h3>AI-Powered Trading</h3>
-                    <p>Advanced GPT-4 integration provides intelligent market analysis and personalized trading recommendations in real-time.</p>
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI Assistant</h3>
+                    <p>GPT-4 powered trading advice and instant rate updates</p>
                 </div>
                 
-                <div class="card">
-                    <div class="card-icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <h3>Live Market Rates</h3>
-                    <p>Real-time USD, USDT, and AED exchange rates with competitive 8% markup, updated continuously via premium APIs.</p>
+                <div class="feature">
+                    <div class="feature-icon">💰</div>
+                    <h3>Live Rates</h3>
+                    <p>Real-time USD, USDT, AED exchange with 8% markup</p>
                 </div>
                 
-                <div class="card">
-                    <div class="card-icon">
-                        <i class="fab fa-whatsapp"></i>
-                    </div>
-                    <h3>WhatsApp Integration</h3>
-                    <p>Seamless trading experience directly through WhatsApp - no apps to download, just instant messaging.</p>
-                </div>
-                
-                <div class="card">
-                    <div class="card-icon">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <h3>24/7 Availability</h3>
-                    <p>Automated daily broadcasts at 9AM, 3PM & 7PM Gulf Time, plus instant responses whenever you need them.</p>
+                <div class="feature">
+                    <div class="feature-icon">📱</div>
+                    <h3>WhatsApp Ready</h3>
+                    <p>Trade directly through WhatsApp - no apps needed!</p>
                 </div>
             </div>
             
@@ -1922,7 +1858,7 @@ def home():
                 </div>
                 <div class="stat">
                     <div class="stat-number">24/7</div>
-                    <div class="stat-label">Service Uptime</div>
+                    <div class="stat-label">Available</div>
                 </div>
                 <div class="stat">
                     <div class="stat-number">3x</div>
@@ -1931,55 +1867,59 @@ def home():
             </div>
             
             <div class="whatsapp-cta">
-                <h2><i class="fab fa-whatsapp"></i> Start Trading Now!</h2>
-                <p>Connect with our AI trading assistant instantly</p>
-                <div class="whatsapp-number">+1 (415) 523-8886</div>
-                <p style="margin: 20px 0;"><strong>Try saying:</strong> "What's the USD rate?" or "I want to exchange $1000"</p>
+                <h2>📲 Start Trading Now!</h2>
+                <p>Message our AI assistant on WhatsApp</p>
+                <div class="phone" onclick="copyNumber()">+1 (415) 523-8886</div>
+                <p><strong>Try saying:</strong> "What's the USD rate?" or "I want to exchange $1000"</p>
                 <a href="https://wa.me/14155238886?text=Hi!%20I%27d%20like%20to%20check%20exchange%20rates" 
-                   class="cta-button" target="_blank">
-                    <i class="fab fa-whatsapp"></i> Open WhatsApp
+                   class="cta-btn" target="_blank">
+                   💬 Open WhatsApp
                 </a>
             </div>
             
+            <div class="trading-info">
+                <h3>⚡ Trading Features</h3>
+                <ul class="info-list">
+                    <li>💵 <strong>USD/XAF Exchange</strong> - 8% markup rates</li>
+                    <li>🪙 <strong>USDT/XAF Trading</strong> - Crypto to local currency</li>
+                    <li>🌍 <strong>AED/USD Conversion</strong> - 8.5% markup</li>
+                    <li>🔔 <strong>Rate Alerts</strong> - 9AM, 3PM, 7PM Gulf Time</li>
+                    <li>🛡️ <strong>Secure Trading</strong> - AI-powered verification</li>
+                </ul>
+            </div>
+            
             <div class="footer">
-                <p><strong>Evocash.org</strong> - Powered by OpenAI • Built on Flask & Twilio</p>
-                <p style="margin-top: 10px;">
-                    <i class="fas fa-shield-alt"></i> 
-                    This is an AI trading assistant. All rates are for reference purposes.
+                <p><strong>Evocash.org</strong> - Professional Currency Exchange</p>
+                <p style="margin-top: 10px; opacity: 0.8;">
+                    Powered by OpenAI GPT-4 • Built with Flask & Twilio
                 </p>
-                <p style="margin-top: 5px; font-size: 0.9rem;">
+                <p style="margin-top: 10px; opacity: 0.7; font-size: 0.9rem;">
+                    ⚠️ AI trading assistant. Rates for reference only.
+                </p>
+                <p style="color: #999; font-size: 0.85rem; margin-top: 10px;">
                     Last updated: """ + datetime.now(pytz.utc).strftime('%Y-%m-%d %H:%M:%S UTC') + """
                 </p>
             </div>
         </div>
         
         <script>
-            // Add some interactive elements
-            document.addEventListener('DOMContentLoaded', function() {
-                // Animate cards on scroll
-                const cards = document.querySelectorAll('.card');
-                const observer = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            entry.target.style.animation = 'fadeInUp 0.6s ease-out forwards';
-                        }
-                    });
-                });
-                
-                cards.forEach(card => observer.observe(card));
-                
-                // Add click effect to WhatsApp number
-                const whatsappNumber = document.querySelector('.whatsapp-number');
-                whatsappNumber.addEventListener('click', function() {
-                    navigator.clipboard.writeText('+14155238886').then(() => {
-                        const original = this.textContent;
-                        this.textContent = '📋 Copied!';
+            function copyNumber() {
+                const phoneNumber = '+14155238886';
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(phoneNumber).then(() => {
+                        const element = document.querySelector('.phone');
+                        const original = element.textContent;
+                        element.textContent = '📋 Copied!';
+                        element.style.background = 'rgba(255,255,255,0.4)';
                         setTimeout(() => {
-                            this.textContent = original;
+                            element.textContent = original;
+                            element.style.background = 'rgba(255,255,255,0.2)';
                         }, 2000);
                     });
-                });
-            });
+                } else {
+                    alert('Phone number: ' + phoneNumber);
+                }
+            }
         </script>
     </body>
     </html>
