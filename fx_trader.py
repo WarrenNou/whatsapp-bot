@@ -107,13 +107,13 @@ class FXTrader:
             return False
     
     def get_daily_rates(self):
-        """Get daily FX rates summary with Evocash.org branding"""
+        """Get daily FX rates summary"""
         if not self.calculate_rates():
             return "⚠️ Unable to fetch current exchange rates. Please try again later."
         
         rates_message = f"""
-🏦 **EVOCASH FX TRADING RATES** 📈
-💼 *AI FX Trader from Evocash.org*
+🏦 **FX TRADING RATES** 📈
+💼 *AI FX Trading Assistant*
 
 📅 **{self.base_rates['last_updated']}**
 
@@ -125,14 +125,13 @@ class FXTrader:
 📊 **Rate Details:**
 • USD/USDT: Service fee included
 • AED: Service fee included
-• Based on live Yahoo Finance data
+• Based on live market data
 • Updated in real-time
 
 💰 **Quick Calculate:**
 Reply: "100 USD" or "500 AED"
 
-📞 **WhatsApp Trading:** +1 (415) 523-8886
-🌐 **Evocash.org** - Your Trusted FX Partner
+📞 **Contact us for trading:** +1 (415) 523-8886
 ⚠️ *Disclaimer: Rates are AI-generated for reference. Contact us for actual transactions.*
 
 🕒 24/7 Service | 🔄 Live Updates
@@ -152,15 +151,14 @@ Reply: "100 USD" or "500 AED"
             if currency == 'USD':
                 xaf_amount = amount * self.base_rates['XAF_USD']
                 return f"""
-💱 **EVOCASH FX CALCULATION**
+💱 **FX CALCULATION**
 
 **{amount:,} USD → {xaf_amount:,} XAF**
 
 Rate: 1 USD = {self.base_rates['XAF_USD']:,} XAF
 *Service fee included*
 
-📞 **WhatsApp Trading:** +1 (415) 523-8886
-🌐 **Evocash.org** - Contact us to complete transaction
+📞 **Contact us to trade:** +1 (415) 523-8886
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *AI-generated rate for reference*
                 """.strip()
@@ -168,15 +166,14 @@ Rate: 1 USD = {self.base_rates['XAF_USD']:,} XAF
             elif currency in ['USDT', 'TETHER']:
                 xaf_amount = amount * self.base_rates['XAF_USDT']
                 return f"""
-💱 **EVOCASH FX CALCULATION**
+💱 **FX CALCULATION**
 
 **{amount:,} USDT → {xaf_amount:,} XAF**
 
 Rate: 1 USDT = {self.base_rates['XAF_USDT']:,} XAF
 *Service fee included*
 
-📞 **WhatsApp Trading:** +1 (415) 523-8886
-🌐 **Evocash.org** - Contact us to complete transaction
+📞 **Contact us to trade:** +1 (415) 523-8886
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *AI-generated rate for reference*
                 """.strip()
@@ -184,26 +181,25 @@ Rate: 1 USDT = {self.base_rates['XAF_USDT']:,} XAF
             elif currency == 'AED':
                 xaf_amount = amount * self.base_rates['XAF_AED']
                 return f"""
-💱 **EVOCASH FX CALCULATION**
+💱 **FX CALCULATION**
 
 **{amount:,} AED → {xaf_amount:,} XAF**
 
 Rate: 1 AED = {self.base_rates['XAF_AED']:,} XAF
 *Service fee included*
 
-📞 **WhatsApp Trading:** +1 (415) 523-8886
-🌐 **Evocash.org** - Contact us to complete transaction
+📞 **Contact us to trade:** +1 (415) 523-8886
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *AI-generated rate for reference*
                 """.strip()
             else:
-                return f"❌ Currency '{currency}' not supported. Available: USD, USDT, AED"
+                return f"❌ Currency '{currency}' not supported. Available: USD, USDT, AED\n\n📞 **Contact us:** +1 (415) 523-8886"
                 
         except ValueError:
-            return "❌ Invalid amount. Please enter a number (e.g., '100 USD')"
+            return "❌ Invalid amount. Please enter a number (e.g., '100 USD')\n\n📞 **Contact us:** +1 (415) 523-8886"
         except Exception as e:
             logger.error(f"Error calculating exchange: {e}")
-            return "⚠️ Error processing exchange calculation. Please try again."
+            return "⚠️ Error processing exchange calculation. Please try again.\n\n📞 **Contact us:** +1 (415) 523-8886"
 
 # Global FX trader instance
 fx_trader = FXTrader()

@@ -1,5 +1,5 @@
 """
-Server Keep-Alive and Enhanced Scheduler for Evocash FX Trading Bot
+Server Keep-Alive and Enhanced Scheduler for FX Trading Bot
 Prevents free server from sleeping and adds multiple daily broadcasts
 """
 
@@ -76,12 +76,12 @@ class AdvancedScheduler:
 • Markets active all day
 
 ⚠️ **DISCLAIMER:**
-This is an AI FX Trader from **Evocash.org**
+This is an AI FX Trading Assistant
 
 🤖 Rates are AI-generated for reference
-📞 Contact us for actual transactions
+📞 Contact us for actual transactions: +1 (415) 523-8886
 
-*Automated Morning Service by Evocash*
+*Automated Morning Service*
         """.strip()
         
         return broadcast_message
@@ -102,8 +102,8 @@ This is an AI FX Trader from **Evocash.org**
 • Final update: 7:00 PM Gulf Time
 • New rates: Tomorrow 9:00 AM
 
-💼 **Evocash.org** - Act fast for today's rates!
-⚠️ AI FX Trader Service
+💼 **Contact us to trade:** +1 (415) 523-8886
+⚠️ AI FX Trading Service
         """.strip()
         
         return message
@@ -125,8 +125,8 @@ This is an AI FX Trader from **Evocash.org**
 • Next update: Tomorrow 9:00 AM Gulf Time
 • Current rates valid until midnight
 
-🌐 **Evocash.org** - Don't miss today's opportunities!
-⚠️ AI FX Trader - Final Call Service
+🌐 **Contact us to trade:** +1 (415) 523-8886
+⚠️ AI FX Trading - Final Call Service
         """.strip()
         
         return message
