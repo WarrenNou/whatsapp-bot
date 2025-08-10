@@ -172,8 +172,18 @@ def create_fallback_redis():
     logger.warning("Using fallback Redis client - some features may be limited")
     return FallbackRedis()
 
-# Initialize Redis connection when module loads
-initialize_redis()
+# Initialize Redis connection when module loads - but don't block on failure
+try:
+    if not os.getenv('RENDER'):
+        # Only initialize immediately for local development
+        initialize_redis()
+    else:
+        # For Render, start with fallback and connect later
+        logger.info("Render deployment detected - starting with fallback Redis")
+        redis_client = create_fallback_redis()
+except Exception as e:
+    logger.warning(f"Initial Redis initialization failed: {e}")
+    redis_client = create_fallback_redis()
 
 # Production-friendly initialization using threading
 import threading
@@ -181,8 +191,22 @@ import atexit
 
 def initialize_background_services():
     """Initialize background services for production"""
+    global redis_client
+    
     try:
         logger.info("Initializing background services for production...")
+        
+        # Try to connect to real Redis if we're using fallback
+        if os.getenv('RENDER') and isinstance(redis_client, type(create_fallback_redis())):
+            logger.info("Attempting to upgrade from fallback Redis to real Redis...")
+            try:
+                real_redis = initialize_redis()
+                if real_redis and hasattr(real_redis, 'ping'):
+                    real_redis.ping()
+                    redis_client = real_redis
+                    logger.info("Successfully upgraded to real Redis connection!")
+            except Exception as e:
+                logger.warning(f"Failed to upgrade to real Redis, continuing with fallback: {e}")
         
         # Initialize enhanced scheduler with keep-alive (use environment PORT)
         server_port = os.getenv('PORT', 5000)
@@ -206,6 +230,36 @@ def initialize_background_services():
     except Exception as e:
         logger.error(f"Failed to initialize background services: {e}")
 
+# Background Redis connection upgrader for Render
+def redis_upgrader():
+    """Periodically try to upgrade from fallback Redis to real Redis"""
+    global redis_client
+    
+    if not os.getenv('RENDER'):
+        return
+        
+    for attempt in range(12):  # Try for about 10 minutes
+        try:
+            time.sleep(50)  # Wait 50 seconds between attempts
+            
+            # Skip if we already have a real Redis connection
+            if not isinstance(redis_client, type(create_fallback_redis())):
+                logger.info("Real Redis connection already established")
+                break
+                
+            logger.info(f"Redis upgrade attempt {attempt + 1}/12...")
+            real_redis = initialize_redis()
+            if real_redis and hasattr(real_redis, 'ping'):
+                real_redis.ping()
+                redis_client = real_redis
+                logger.info("Successfully upgraded to real Redis connection!")
+                break
+                
+        except Exception as e:
+            logger.warning(f"Redis upgrade attempt {attempt + 1} failed: {e}")
+    
+    logger.info("Redis upgrader task completed")
+
 # Initialize background services in a separate thread for production
 def delayed_initialization():
     """Delay initialization to allow app to start first"""
@@ -220,6 +274,11 @@ if os.getenv('RENDER'):  # Only on Render
     logger.info("Render deployment detected - starting delayed initialization")
     init_thread = threading.Thread(target=delayed_initialization, daemon=True)
     init_thread.start()
+    
+    # Also start Redis upgrader in background
+    redis_thread = threading.Thread(target=redis_upgrader, daemon=True)
+    redis_thread.start()
+    logger.info("Redis upgrader started in background")
 else:
     logger.info("Local deployment - no delayed initialization needed")
 
