@@ -33,7 +33,7 @@ class FXTrader:
         # New currency markups
         self.xaf_cny_markup_percentage = 9.5  # 9.5% markup on XAF/CNY rates
         self.xof_cny_markup_percentage = 5.0  # 5% markup on XOF/CNY rates
-        self.xaf_eur_markup_percentage = 6.0  # 6% markup on XAF/EUR rates
+        self.xaf_eur_markup_percentage = 7.0  # 6% markup on XAF/EUR rates
         self.xof_eur_markup_percentage = 4.0  # 4% markup on XOF/EUR rates
         self.api_base_url = "https://api.exchangerate-api.com/v4/latest"
     
