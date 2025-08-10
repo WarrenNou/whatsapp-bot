@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 class ExternalKeepAlive:
     def __init__(self, server_url=None, interval_minutes=5):
-        # Auto-detect Render environment
+        # Auto-detect environment and use appropriate URL
         if server_url:
             self.server_url = server_url
         elif os.getenv('RENDER'):
-            # On Render, use the service URL
-            self.server_url = f"https://whatsapp-bot-96xm.onrender.com"
+            # On Render, use the configured service URL
+            self.server_url = os.getenv('RENDER_URL', 'https://whatsapp-bot-96xm.onrender.com')
         else:
             # Local development
             self.server_url = f"http://localhost:{os.getenv('PORT', 5001)}"

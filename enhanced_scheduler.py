@@ -27,8 +27,8 @@ class AdvancedScheduler:
         if server_url:
             self.server_url = server_url
         elif os.getenv('RENDER'):
-            # On Render, use the service URL
-            self.server_url = "https://whatsapp-bot-96xm.onrender.com"
+            # On Render, use the configured service URL
+            self.server_url = os.getenv('RENDER_URL', 'https://whatsapp-bot-96xm.onrender.com')
         else:
             # Local development
             self.server_url = f"http://localhost:{os.getenv('PORT', 5001)}"
