@@ -1047,31 +1047,46 @@ def generate_ai_response_with_action_parsing(
         
         # Inject memories into system prompt
         system_prompt = """
-        You are a professional FX Trading Assistant specializing in currency exchange between XAF (Central African Franc) and major currencies (USD, AED, USDT), communicating via WhatsApp.
+        You are a professional FX Trading Assistant specializing in currency exchange between XAF (Central African Franc), XOF (West African Franc) and major currencies (USD, AED, USDT), communicating via WhatsApp.
 
         Primary Functions:
-        - Provide real-time exchange rates with 9% service markup
-        - Calculate currency conversions for XAF/USD, XAF/AED, XAF/USDT
+        - Provide real-time exchange rates with markup included
+        - Calculate currency conversions for XAF/USD, XAF/AED, XAF/USDT, XOF/USD, XOF/AED, XOF/USDT
         - Offer professional trading advice and market insights
         - Handle client inquiries about exchange services
+        - Guide clients through actual trading process when they want to trade
         
         Trading Information:
-        - All rates include 9% service fee above market rates
-        - Rates sourced from Yahoo Finance for accuracy
+        - XAF rates: 9% markup on USD/USDT, 8.5% on AED
+        - XOF rates: 3.5% markup (better rates for West Africa)
+        - Rates sourced from live market data for accuracy
         - Operating 24/7 for client convenience
-        - Specializing in Cameroon (XAF) currency exchange
+        - Specializing in African currency exchange
+        
+        IMPORTANT - ACTUAL TRADING PROCESS:
+        When clients show SERIOUS INTENT to trade (not just asking for rates), explain the trading process:
+        1. They must deposit cash equivalent in XAF/XOF first (versement/bank deposit)
+        2. Share deposit slip/receipt for verification
+        3. We verify the deposit (15-30 minutes)
+        4. We release their USD/USDT/AED after verification
+        5. No deposit = No exchange (security policy)
+        
+        PERSONAL CONTACT FOR REAL TRADES:
+        Only share this contact when you're confident the client wants to actually trade (not just getting rates):
+        📞 **Personal Trading Contact:** +1 (302) 582-0825
         
         Response Style:
         - Professional yet friendly trading assistant
         - Use currency emojis and trading symbols
         - Provide clear rate calculations
-        - Include contact information for transactions
+        - Include general contact: +1 (415) 523-8886
+        - Share personal contact +1 (302) 582-0825 ONLY for actual trading intent
         - Focus on FX trading topics primarily
         
         Available Currencies:
-        - USD (US Dollar) ➡️ XAF
-        - AED (UAE Dirham) ➡️ XAF  
-        - USDT (Tether) ➡️ XAF
+        - USD (US Dollar) ➡️ XAF/XOF
+        - AED (UAE Dirham) ➡️ XAF/XOF  
+        - USDT (Tether) ➡️ XAF/XOF
         
         For non-FX topics, provide brief helpful responses but always redirect to currency services.
         Recent User Information:
@@ -1237,8 +1252,8 @@ def handle_fx_commands(message: str) -> Optional[str]:
     if any(keyword in message_lower for keyword in ['rate', 'rates']):
         return fx_trader.get_daily_rates()
     
-    # Check for general rate/exchange keywords
-    if any(keyword in message_lower for keyword in ['exchange', 'fx', 'currency', 'price', 'usd', 'aed', 'usdt', 'xaf']):
+    # Check for general rate/exchange keywords including XOF
+    if any(keyword in message_lower for keyword in ['exchange', 'fx', 'currency', 'price', 'usd', 'aed', 'usdt', 'xaf', 'xof']):
         if any(keyword in message_lower for keyword in ['today', 'current', 'now', 'latest', 'daily']):
             return fx_trader.get_daily_rates()
     
@@ -1250,6 +1265,45 @@ def handle_fx_commands(message: str) -> Optional[str]:
         currency = match.group(2)
         return fx_trader.calculate_exchange(amount, currency)
     
+    # Check for trading intent - when users want to actually trade
+    trading_intent_keywords = [
+        'want to trade', 'need to exchange', 'ready to trade', 'proceed with trade',
+        'trade now', 'exchange now', 'buy', 'sell', 'need cash', 'urgent exchange',
+        'deposit', 'versement', 'transfer money', 'send money', 'i want to',
+        'can you help me', 'process', 'complete trade', 'make exchange'
+    ]
+    
+    if any(keyword in message_lower for keyword in trading_intent_keywords):
+        # Extract amount and currency if present
+        trading_pattern = r'(\d+(?:\.\d+)?)\s*(usd|aed|usdt|tether|dollars?|dirhams?)\b'
+        trade_match = re.search(trading_pattern, message_lower)
+        
+        if trade_match:
+            amount = trade_match.group(1)
+            currency = trade_match.group(2)
+            if currency in ['dollar', 'dollars']:
+                currency = 'USD'
+            elif currency in ['dirham', 'dirhams']:
+                currency = 'AED'
+            
+            # Return trading process information
+            return fx_trader.get_trading_process_info(amount, currency)
+        else:
+            return """
+🏦 **READY TO TRADE?** 💱
+
+To help you with your trade, please specify:
+• Amount you want to exchange
+• Source currency (USD, AED, USDT)
+• Target currency (XAF or XOF)
+
+**Example:** "I want to trade 500 USD to XAF"
+
+📞 **General inquiries:** +1 (415) 523-8886
+
+💡 **Note:** You'll need to deposit the equivalent amount in XAF/XOF first before we can process your exchange.
+            """.strip()
+    
     # Check for subscription commands
     if any(keyword in message_lower for keyword in ['subscribe', 'daily', 'automatic', 'alerts']):
         return f"""
@@ -1257,41 +1311,41 @@ def handle_fx_commands(message: str) -> Optional[str]:
 
 🕘 **Automatic daily rates at 9:00 AM Gulf Time**
 
-To subscribe: Contact Evocash.org
 Features:
 • Daily rate broadcasts
 • Live market updates  
 • Professional FX insights
-• Evocash.org premium service
+• XAF & XOF rates included
 
-🌐 Visit: **Evocash.org**
-⚠️ AI FX Trader Service
+📞 **Contact:** +1 (415) 523-8886
+⚠️ AI FX Trading Service
         """.strip()
     
     # Check for general FX greetings/help
     if any(keyword in message_lower for keyword in ['hello', 'hi', 'help', 'start', 'menu']):
         return f"""
-🏦 **Welcome to Evocash FX Trading!** 💱
-💼 *AI FX Trader from Evocash.org*
+🏦 **Welcome to FX Trading!** 💱
+💼 *AI FX Trading Assistant*
 
 **Available Commands:**
-• "rates" or "rate" - Get current exchange rates
-• "100 USD" - Calculate XAF equivalent for any amount
-• "500 AED" - Calculate XAF equivalent for AED
-• "1000 USDT" - Calculate XAF equivalent for USDT
+• "rates" - Get current XAF & XOF exchange rates
+• "100 USD" - Calculate XAF/XOF equivalent for any amount
+• "500 AED" - Calculate XAF/XOF equivalent for AED
+• "1000 USDT" - Calculate XAF/XOF equivalent for USDT
 
 **Supported Currencies:**
-• USD (US Dollar) - {fx_trader.markup_percentage}% fee
-• AED (UAE Dirham) - {fx_trader.aed_markup_percentage}% fee
-• USDT (Tether) - {fx_trader.markup_percentage}% fee
+• USD (US Dollar) to XAF/XOF
+• AED (UAE Dirham) to XAF/XOF
+• USDT (Tether) to XAF/XOF
 
 **Features:**
-• Live rates from Yahoo Finance
+• Live rates from market data
+• XOF rates with better markup (3.5%)
 • 24/7 availability
 • Real-time calculations
-• Daily rate broadcasts at 9AM Gulf Time
+• Daily rate broadcasts at 9AM, 3PM, 7PM Gulf Time
 
-🌐 **Evocash.org** - Your Trusted FX Partner
+📞 **Contact:** +1 (415) 523-8886
 Send "rates" to get started! 📈
         """.strip()
     
