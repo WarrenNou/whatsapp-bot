@@ -27,7 +27,7 @@ class FXTrader:
             'last_updated': ''
         }
         self.usd_markup_percentage = 8  # 8% markup on USD rates
-        self.usdt_markup_percentage = 8.5  # 8.5% markup on USDT rates
+        self.usdt_markup_percentage = 8 # 8.5% markup on USDT rates
         self.aed_markup_percentage = 8.5  # 8.5% markup on AED rates
         self.xof_markup_percentage = 3.5  # 3.5% markup on XOF rates
         # New currency markups
@@ -36,6 +36,14 @@ class FXTrader:
         self.xaf_eur_markup_percentage = 6.0  # 6% markup on XAF/EUR rates
         self.xof_eur_markup_percentage = 4.0  # 4% markup on XOF/EUR rates
         self.api_base_url = "https://api.exchangerate-api.com/v4/latest"
+    
+    def get_greeting_and_disclaimer(self):
+        """Get greeting and AI disclaimer for messages"""
+        return """👋 **Hello! Welcome to EVA Fx Trading Service**
+
+🤖 **AI DISCLAIMER:** This is an AI-powered trading assistant. All rates and information are automatically generated and should be verified before making any financial decisions.
+
+"""
     
     def get_usd_xaf_rate(self):
         """Get USD/XAF rate from free exchange rate API"""
@@ -237,8 +245,10 @@ class FXTrader:
         if not self.calculate_rates():
             return "⚠️ Unable to fetch current exchange rates. Please try again later."
         
+        greeting = self.get_greeting_and_disclaimer()
+        
         rates_message = f"""
-🏦 **EVA FX TRADING RATES** 📈
+{greeting}🏦 **EVA FX TRADING RATES** 📈
 💼 *EVA Fx - Premium Currency Exchange*
 
 📅 **{self.base_rates['last_updated']}**
@@ -282,8 +292,9 @@ Reply: "100 USD", "500 CNY", "200 EUR" or "1000 XOF"
             if currency == 'USD':
                 xaf_amount = amount * self.base_rates['XAF_USD']
                 xof_amount = amount * self.base_rates['XOF_USD']
+                greeting = self.get_greeting_and_disclaimer()
                 return f"""
-💱 **EVA FX CALCULATION**
+{greeting}💱 **EVA FX CALCULATION**
 
 **{amount:,} USD → {xaf_amount:,} XAF**
 **{amount:,} USD → {xof_amount:,} XOF**
@@ -299,8 +310,9 @@ Rates: 1 USD = {self.base_rates['XAF_USD']:,} XAF | {self.base_rates['XOF_USD']:
             elif currency in ['USDT', 'TETHER']:
                 xaf_amount = amount * self.base_rates['XAF_USDT']
                 xof_amount = amount * self.base_rates['XOF_USDT']
+                greeting = self.get_greeting_and_disclaimer()
                 return f"""
-💱 **EVA FX CALCULATION**
+{greeting}💱 **EVA FX CALCULATION**
 
 **{amount:,} USDT → {xaf_amount:,} XAF**
 **{amount:,} USDT → {xof_amount:,} XOF**
@@ -316,8 +328,9 @@ Rates: 1 USDT = {self.base_rates['XAF_USDT']:,} XAF | {self.base_rates['XOF_USDT
             elif currency == 'AED':
                 xaf_amount = amount * self.base_rates['XAF_AED']
                 xof_amount = amount * self.base_rates['XOF_AED']
+                greeting = self.get_greeting_and_disclaimer()
                 return f"""
-💱 **EVA FX CALCULATION**
+{greeting}💱 **EVA FX CALCULATION**
 
 **{amount:,} AED → {xaf_amount:,} XAF**
 **{amount:,} AED → {xof_amount:,} XOF**
@@ -333,8 +346,9 @@ Rates: 1 AED = {self.base_rates['XAF_AED']:,} XAF | {self.base_rates['XOF_AED']:
             elif currency in ['CNY', 'RMB', 'YUAN']:
                 xaf_amount = amount * self.base_rates['XAF_CNY']
                 xof_amount = amount * self.base_rates['XOF_CNY']
+                greeting = self.get_greeting_and_disclaimer()
                 return f"""
-💱 **EVA FX CALCULATION**
+{greeting}💱 **EVA FX CALCULATION**
 
 **{amount:,} CNY → {xaf_amount:,} XAF**
 **{amount:,} CNY → {xof_amount:,} XOF**
@@ -350,8 +364,9 @@ Rates: 1 CNY = {self.base_rates['XAF_CNY']:,} XAF | {self.base_rates['XOF_CNY']:
             elif currency == 'EUR':
                 xaf_amount = amount * self.base_rates['XAF_EUR']
                 xof_amount = amount * self.base_rates['XOF_EUR']
+                greeting = self.get_greeting_and_disclaimer()
                 return f"""
-💱 **EVA FX CALCULATION**
+{greeting}💱 **EVA FX CALCULATION**
 
 **{amount:,} EUR → {xaf_amount:,} XAF**
 **{amount:,} EUR → {xof_amount:,} XOF**
