@@ -1878,6 +1878,18 @@ if __name__ == '__main__':
         except Exception as e:
             logger.warning(f"Failed to print setup instructions: {e}")
         
+        # Initialize Telegram Bot if on cloud platform
+        if os.getenv('RENDER') or os.getenv('HEROKU') or os.getenv('RAILWAY_PROJECT_NAME'):
+            try:
+                telegram_token = os.getenv('TELEGRAM_BOT_TOKEN')
+                if telegram_token:
+                    logger.info("Cloud platform detected - Telegram bot webhook mode enabled")
+                    logger.info("Telegram bot will handle messages via /telegram-webhook endpoint")
+                else:
+                    logger.warning("TELEGRAM_BOT_TOKEN not configured - Telegram bot disabled")
+            except Exception as e:
+                logger.warning(f"Telegram bot initialization check failed: {e}")
+        
         # Log startup information
         logger.info(f"Starting WhatsApp AI Assistant on port {os.getenv('PORT', 5001)}")
         logger.info(f"Using OpenAI model: {OPENAI_MODEL}")

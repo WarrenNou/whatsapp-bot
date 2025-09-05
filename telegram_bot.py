@@ -8,6 +8,10 @@ import asyncio
 import json
 import re
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -207,37 +211,21 @@ class TelegramBot:
         logger.info(f"Button callback handled: {callback_data} for user {query.from_user.id}")
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle regular text messages with AI integration"""
+        """Handle incoming text messages"""
+        # Add comprehensive null checks
+        if not update or not update.message:
+            return
+            
+        # Handle non-text messages (photos, documents, etc.)
+        if not hasattr(update.message, 'text') or not update.message.text:
+            return
+        
         user = update.effective_user
+        if not user:
+            return
+            
+        username = user.username if user.username else "Unknown"
         message_text = update.message.text
-        
-        # Group moderation
-        if update.message.chat.type in ['group', 'supergroup']:
-            if await self._moderate_group_message(update, context):
-                return  # Message was moderated
-        
-        logger.info(f"Message from {user.id} ({user.username}): {message_text}")
-        
-        try:
-            # Check for common patterns first
-            if any(word in message_text.lower() for word in ['rate', 'rates', 'exchange']):
-                response = self.fx_trader.get_daily_rates()
-                
-            elif 'convert' in message_text.lower() or ' to ' in message_text.lower():
-                response = self._parse_conversion_message(message_text)
-                
-            elif any(currency in message_text.upper() for currency in ['USD', 'EUR', 'GBP', 'AED', 'USDT', 'XAF', 'XOF', 'CNY']):
-                response = self._handle_currency_mention(message_text)
-                
-            else:
-                # Use AI for general conversation
-                response = await self._get_ai_response(message_text, user)
-            
-            await update.message.reply_text(response, parse_mode='Markdown')
-            
-        except Exception as e:
-            logger.error(f"Error handling message: {e}")
-            await update.message.reply_text("🤖 Sorry, I had a little hiccup there! Could you try rephrasing your question? I'm here to help with FX trading and currency exchange.")
 
     async def _get_ai_response(self, message: str, user) -> str:
         """Get AI-powered response for general conversation"""
