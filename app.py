@@ -1789,6 +1789,53 @@ def keep_alive():
     """Dedicated keep-alive endpoint"""
     return {"message": "Server is alive", "service": "evocash-fx-bot"}
 
+@app.route('/telegram-webhook', methods=['POST'])
+@limiter.exempt
+def telegram_webhook():
+    """Handle Telegram webhook updates"""
+    try:
+        # Import Telegram bot here to avoid startup issues if package not installed
+        from telegram_bot import TelegramBot
+        import asyncio
+        
+        update_data = request.get_json()
+        if not update_data:
+            logger.error("No data received from Telegram webhook")
+            return jsonify({"status": "error", "message": "No data received"}), 400
+        
+        # Get bot token from environment
+        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        if not bot_token:
+            logger.error("TELEGRAM_BOT_TOKEN not configured")
+            return jsonify({"status": "error", "message": "Bot not configured"}), 500
+        
+        # Process the webhook update
+        bot = TelegramBot(bot_token)
+        
+        # Run the async handler
+        loop = None
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        success = loop.run_until_complete(bot.handle_webhook(update_data))
+        
+        if success:
+            logger.info("Telegram webhook processed successfully")
+            return jsonify({"status": "ok"}), 200
+        else:
+            logger.error("Failed to process Telegram webhook")
+            return jsonify({"status": "error", "message": "Processing failed"}), 500
+            
+    except ImportError:
+        logger.error("Telegram bot module not available - install python-telegram-bot package")
+        return jsonify({"status": "error", "message": "Telegram bot not available"}), 501
+    except Exception as e:
+        logger.error(f"Error in Telegram webhook: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.errorhandler(429)
 def ratelimit_handler(e):
     """Handle rate limit errors gracefully"""
