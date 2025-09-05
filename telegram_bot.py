@@ -7,7 +7,8 @@ from openai import OpenAI
 import asyncio
 import json
 import re
-from datetime import datetime
+from datetime import datetime, time
+import pytz
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -38,9 +39,38 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Failed to initialize OpenAI client: {e}")
         
-        # Group content moderation settings
+        # Enhanced group content moderation settings
         self.group_moderation_enabled = True
-        self.spam_keywords = ['spam', 'scam', 'buy now', 'click here', 'limited time']
+        self.spam_keywords = [
+            'spam', 'scam', 'buy now', 'click here', 'limited time',
+            'get rich quick', 'guaranteed profit', 'investment opportunity',
+            'crypto scam', 'phishing', 'fake trading', 'ponzi scheme',
+            'urgent', 'act now', 'exclusive offer', 'make money fast',
+            '🚨', 'warning', 'alert'  # Common scam indicators
+        ]
+        self.inappropriate_content = [
+            'porn', 'xxx', 'adult content', 'nsfw', 'explicit',
+            'hate speech', 'racist', 'discrimination'
+        ]
+        self.off_topic_keywords = [
+            'politics', 'election', 'government', 'religion',
+            'sports betting', 'casino', 'gambling', 'lottery'
+        ]
+        
+        # Personal greeting database for users
+        self.user_greetings = {}  # Store personalized greetings
+        self.greeting_variations = [
+            "👋 Hi {name}! Ready to explore FX rates?",
+            "🌟 Hello {name}! How can I help you with trading today?",
+            "💫 Hey there, {name}! Looking for currency rates?",
+            "🚀 Welcome back, {name}! What FX info do you need?",
+            "✨ Hi {name}! Let's talk currencies and trading!"
+        ]
+        
+        # Daily scheduler settings
+        self.scheduled_groups = set()  # Store group IDs for daily rates
+        self.daily_rates_time = time(10, 0)  # 10:00 AM
+        self.timezone = pytz.timezone('Africa/Lagos')  # WAT timezone
         
         # AI personality for more human responses
         self.ai_personality = """You are Eva, a friendly and professional FX trading assistant. You help people with currency exchange, rates, and trading information. You are knowledgeable, helpful, and speak in a warm, conversational tone. You work for EVA Fx, a trusted currency exchange service. Always be helpful but also include appropriate disclaimers about trading risks when discussing financial matters."""
@@ -54,6 +84,15 @@ class TelegramBot:
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("rates", self.rates_command))
         self.application.add_handler(CommandHandler("convert", self.convert_command))
+        
+        # Group-specific commands
+        self.application.add_handler(CommandHandler("grouphelp", self.group_help_command))
+        self.application.add_handler(CommandHandler("grouprates", self.group_rates_command))
+        
+        # Scheduler commands (admin only)
+        self.application.add_handler(CommandHandler("enabledaily", self.enable_daily_rates))
+        self.application.add_handler(CommandHandler("disabledaily", self.disable_daily_rates))
+        
         self.application.add_handler(CallbackQueryHandler(self.button_callback))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
         
@@ -63,33 +102,96 @@ class TelegramBot:
             BotCommand("help", "Show help information"),
             BotCommand("rates", "Get current exchange rates"),
             BotCommand("convert", "Convert currencies (e.g., /convert 100 USD to EUR)"),
+            BotCommand("grouprates", "Get compact rates format for groups"),
+            BotCommand("grouphelp", "Show group-specific help and commands"),
         ]
         
         await self.application.bot.set_my_commands(commands)
         logger.info("Telegram bot setup completed")
         
+    def get_personal_greeting(self, user, chat_type='private'):
+        """Generate personalized greeting for users"""
+        if not user:
+            return "👋 Hello there! Welcome to EVA Fx Assistant!"
+        
+        user_id = user.id
+        first_name = user.first_name or "friend"
+        
+        # Check if we've greeted this user before
+        if user_id in self.user_greetings:
+            # Return user for more casual greeting
+            import random
+            casual_greetings = [
+                f"👋 Welcome back, {first_name}!",
+                f"🌟 Hey {first_name}! Good to see you again!",
+                f"💫 Hi there, {first_name}! Ready for some FX action?",
+                f"🚀 {first_name}! What can I help you with today?",
+                f"✨ Hello again, {first_name}!"
+            ]
+            return random.choice(casual_greetings)
+        else:
+            # First time user - warm welcome
+            self.user_greetings[user_id] = {
+                'first_name': first_name,
+                'username': user.username,
+                'first_seen': datetime.now().isoformat()
+            }
+            
+            if chat_type == 'private':
+                return f"👋 Hello {first_name}! I'm Eva, your personal FX assistant. Nice to meet you! I'm here to help you with currency exchange rates, conversions, and trading information."
+            else:
+                return f"👋 Hi {first_name}! Welcome to the group! I'm Eva, and I'll help with FX rates and trading info."
+
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /start command"""
+        """Enhanced start command with personalization"""
         user = update.effective_user
-        greeting = self.fx_trader.get_greeting_and_disclaimer()
+        chat_type = update.message.chat.type if update.message and update.message.chat else 'private'
+        
+        # Get personalized greeting
+        personal_greeting = self.get_personal_greeting(user, chat_type)
+        
+        # Get standard disclaimer
+        disclaimer = self.fx_trader.get_greeting_and_disclaimer()
         
         # Create inline keyboard with quick actions
-        keyboard = [
-            [
-                InlineKeyboardButton("📊 Current Rates", callback_data="rates"),
-                InlineKeyboardButton("💱 Convert Currency", callback_data="convert")
-            ],
-            [
-                InlineKeyboardButton("🌐 Visit Website", url="https://whatsapp-bot-96xm.onrender.com"),
-                InlineKeyboardButton("📱 Join Channel", url="https://t.me/+dKTLjP_OHeA3MDE0")
+        if chat_type == 'private':
+            keyboard = [
+                [
+                    InlineKeyboardButton("📊 Current Rates", callback_data="rates"),
+                    InlineKeyboardButton("💱 Convert Currency", callback_data="convert")
+                ],
+                [
+                    InlineKeyboardButton("❓ Help & Commands", callback_data="help"),
+                    InlineKeyboardButton("💬 Chat with Eva", callback_data="ai_help")
+                ],
+                [
+                    InlineKeyboardButton("🌐 Visit Website", url="https://whatsapp-bot-96xm.onrender.com"),
+                    InlineKeyboardButton("📱 Join Channel", url="https://t.me/+dKTLjP_OHeA3MDE0")
+                ]
             ]
-        ]
+        else:
+            # Group-specific buttons
+            keyboard = [
+                [
+                    InlineKeyboardButton("📊 Group Rates", callback_data="rates"),
+                    InlineKeyboardButton("💱 Quick Convert", callback_data="convert")
+                ],
+                [
+                    InlineKeyboardButton("⏰ Daily Rates", callback_data="daily_help"),
+                    InlineKeyboardButton("❓ Group Help", callback_data="group_help")
+                ]
+            ]
+            
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        welcome_message = f"👋 Hello {user.first_name}!\n\n{greeting}\n\n🚀 Use the buttons below or type your message:"
+        full_message = f"{personal_greeting}\n\n{disclaimer}\n\n🚀 **Quick Actions:**"
         
-        await update.message.reply_text(welcome_message, reply_markup=reply_markup)
-        logger.info(f"Start command sent to user {user.id} ({user.username})")
+        await update.message.reply_text(full_message, reply_markup=reply_markup, parse_mode='Markdown')
+        
+        if user:
+            logger.info(f"Personalized start command sent to {chat_type} chat - user {user.id} ({user.first_name})")
+        else:
+            logger.info(f"Start command sent to {chat_type} chat")
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
@@ -121,42 +223,112 @@ class TelegramBot:
         logger.info(f"Help command sent to user {update.effective_user.id}")
 
     async def rates_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /rates command"""
+        """Handle /rates command - works in both private and group chats"""
         try:
+            user = update.effective_user
+            chat_type = update.message.chat.type if update.message and update.message.chat else 'private'
+            
             rates_info = self.fx_trader.get_daily_rates()
             
-            # Create quick conversion buttons
-            keyboard = [
-                [
-                    InlineKeyboardButton("100 USD", callback_data="convert_100_USD"),
-                    InlineKeyboardButton("100 EUR", callback_data="convert_100_EUR")
-                ],
-                [
-                    InlineKeyboardButton("100 GBP", callback_data="convert_100_GBP"),
-                    InlineKeyboardButton("100 JPY", callback_data="convert_100_JPY")
+            # Personal greeting based on chat type
+            if chat_type == 'private':
+                greeting = f"Hi {user.first_name}! 👋 Here are today's rates:"
+                
+                # Create quick conversion buttons for private chat
+                keyboard = [
+                    [
+                        InlineKeyboardButton("💱 100 USD", callback_data="convert_100_USD"),
+                        InlineKeyboardButton("� 100 EUR", callback_data="convert_100_EUR")
+                    ],
+                    [
+                        InlineKeyboardButton("💱 100 GBP", callback_data="convert_100_GBP"),
+                        InlineKeyboardButton("💱 100 AED", callback_data="convert_100_AED")
+                    ],
+                    [
+                        InlineKeyboardButton("� Refresh Rates", callback_data="rates"),
+                        InlineKeyboardButton("💬 Ask Eva", callback_data="ai_help")
+                    ]
                 ]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                full_message = f"{greeting}\n\n{rates_info}"
+                await update.message.reply_text(full_message, reply_markup=reply_markup)
+                
+            else:  # Group chat
+                # Compact format for groups with personal touch
+                group_name = update.message.chat.title or "group"
+                greeting = f"📊 Current rates for {group_name}:"
+                
+                # Create compact group-friendly message
+                compact_rates = f"""
+{greeting}
+
+💱 **EVA Fx Rates** - {self.fx_trader.base_rates.get('last_updated', 'Now')}
+
+🇺🇸 **USD**: {self.fx_trader.base_rates.get('XAF_USD', 'N/A')} XAF | {self.fx_trader.base_rates.get('XOF_USD', 'N/A')} XOF
+💰 **USDT**: {self.fx_trader.base_rates.get('XAF_USDT', 'N/A')} XAF | {self.fx_trader.base_rates.get('XOF_USDT', 'N/A')} XOF  
+🇦🇪 **AED**: {self.fx_trader.base_rates.get('XAF_AED', 'N/A')} XAF | {self.fx_trader.base_rates.get('XOF_AED', 'N/A')} XOF
+🇨🇳 **CNY**: {self.fx_trader.base_rates.get('XAF_CNY', 'N/A')} XAF | {self.fx_trader.base_rates.get('XOF_CNY', 'N/A')} XOF
+🇪🇺 **EUR**: {self.fx_trader.base_rates.get('XAF_EUR', 'N/A')} XAF | {self.fx_trader.base_rates.get('XOF_EUR', 'N/A')} XOF
+
+💡 _Use /convert for calculations_ • _Mention @{context.bot.username} for help_
+                """.strip()
+                
+                # Add inline buttons for groups
+                keyboard = [
+                    [
+                        InlineKeyboardButton("🔄 Convert", callback_data="convert"),
+                        InlineKeyboardButton("📊 Detailed View", callback_data="rates_detailed")
+                    ],
+                    [
+                        InlineKeyboardButton("⏰ Enable Daily", callback_data="enable_daily"),
+                        InlineKeyboardButton("💬 Ask Eva", callback_data="ai_help")
+                    ]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(compact_rates, reply_markup=reply_markup, parse_mode='Markdown')
             
-            await update.message.reply_text(rates_info, reply_markup=reply_markup)
-            logger.info(f"Rates sent to user {update.effective_user.id}")
+            logger.info(f"Rates sent to {chat_type} chat - user {user.id} ({user.first_name})")
             
         except Exception as e:
             logger.error(f"Error getting rates: {e}")
             await update.message.reply_text("❌ Sorry, I couldn't get the current rates. Please try again later.")
 
     async def convert_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /convert command"""
+        """Handle /convert command - works in both private and group chats"""
+        user = update.effective_user
+        chat_type = update.message.chat.type if update.message and update.message.chat else 'private'
+        
         if not context.args or len(context.args) < 4:
-            await update.message.reply_text(
-                "💱 *Currency Conversion*\n\n"
-                "Usage: `/convert <amount> <from_currency> to <to_currency>`\n\n"
-                "*Examples:*\n"
-                "• `/convert 100 USD to XAF`\n"
-                "• `/convert 50 AED to XOF`\n"
-                "• `/convert 200 USDT to XAF`",
-                parse_mode='Markdown'
-            )
+            # Personal help message based on chat type
+            if chat_type == 'private':
+                help_msg = f"""
+💱 **Hi {user.first_name if user else 'there'}! Currency Conversion Help**
+
+**Usage:** `/convert <amount> <from_currency> to <to_currency>`
+
+**Examples:**
+• `/convert 100 USD to XAF`
+• `/convert 50 AED to XOF`
+• `/convert 200 USDT to XAF`
+• `/convert 75 EUR to XOF`
+
+**Supported Currencies:** USD, EUR, GBP, AED, CNY, USDT, XAF, XOF
+
+💡 **Tip:** You can also just type "100 USD to XAF" and I'll convert it!
+                """.strip()
+            else:
+                help_msg = f"""
+💱 **Currency Conversion in {update.message.chat.title or 'group'}**
+
+**Usage:** `/convert <amount> <from> to <to>`
+**Example:** `/convert 100 USD to XAF`
+
+💡 **Quick tip:** Just type "100 USD to XAF" and I'll help!
+                """.strip()
+                
+            await update.message.reply_text(help_msg, parse_mode='Markdown')
             return
             
         try:
@@ -166,8 +338,15 @@ class TelegramBot:
             
             # Use the existing get_trading_process_info method for conversions
             result = self.fx_trader.get_trading_process_info(amount, from_currency, to_currency)
-            await update.message.reply_text(result)
-            logger.info(f"Conversion sent to user {update.effective_user.id}: {amount} {from_currency} to {to_currency}")
+            
+            # Add personal touch to response
+            if chat_type == 'private':
+                personalized_result = f"Here you go, {user.first_name if user else 'friend'}! 💫\n\n{result}"
+            else:
+                personalized_result = f"💱 **Conversion for {user.first_name if user else 'user'}:**\n\n{result}"
+            
+            await update.message.reply_text(personalized_result, parse_mode='Markdown')
+            logger.info(f"Conversion sent to {chat_type} chat - user {user.id if user else 'unknown'}: {amount} {from_currency} to {to_currency}")
             
         except (ValueError, IndexError) as e:
             logger.error(f"Conversion error: {e}")
@@ -175,6 +354,228 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Conversion calculation error: {e}")
             await update.message.reply_text("❌ Sorry, I couldn't perform the conversion. Please try again.")
+
+    async def group_help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /grouphelp command - show group-specific help"""
+        if update.message.chat.type not in ['group', 'supergroup']:
+            await update.message.reply_text("This command is only available in groups. Use /help for private chat commands.")
+            return
+            
+        help_text = """
+🏢 *EVA Fx Bot - Group Commands*
+
+*Available Commands:*
+/grouprates - Get rates in a compact group format
+/grouphelp - Show this group help
+/convert [amount] [from] to [to] - Convert currencies
+
+*Group Features:*
+• 🤖 Mention the bot for AI assistance
+• 💱 Type currency names (USD, XAF, etc.) for quick rates
+• 🔄 Interactive rate buttons for easy access
+• 📊 Group-friendly compact rate display
+
+*Usage Examples:*
+• `/grouprates` - Show all current rates
+• `/convert 100 USD to XAF` - Convert currencies  
+• "What's the USD rate?" - AI will help
+• Just type "USD" or "rates" - Bot will respond
+
+*Tip:* Add bot as admin for best performance in groups.
+        """
+        
+        await update.message.reply_text(help_text, parse_mode='Markdown')
+        logger.info(f"Group help sent to group {update.message.chat_id}")
+
+    async def group_rates_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /grouprates command - show rates in group-friendly format"""
+        try:
+            # Get current rates
+            rates_data = self.fx_trader.base_rates
+            
+            if not rates_data or not rates_data.get('last_updated'):
+                # Fallback to getting fresh rates
+                self.fx_trader.get_daily_rates()
+                rates_data = self.fx_trader.base_rates
+            
+            # Create compact group-friendly message
+            compact_rates = f"""
+💱 **EVA Fx Rates** - {rates_data.get('last_updated', 'Now')}
+
+🇺🇸 **USD**: {rates_data.get('XAF_USD', 'N/A')} XAF | {rates_data.get('XOF_USD', 'N/A')} XOF
+💰 **USDT**: {rates_data.get('XAF_USDT', 'N/A')} XAF | {rates_data.get('XOF_USDT', 'N/A')} XOF  
+🇦🇪 **AED**: {rates_data.get('XAF_AED', 'N/A')} XAF | {rates_data.get('XOF_AED', 'N/A')} XOF
+🇨🇳 **CNY**: {rates_data.get('XAF_CNY', 'N/A')} XAF | {rates_data.get('XOF_CNY', 'N/A')} XOF
+🇪🇺 **EUR**: {rates_data.get('XAF_EUR', 'N/A')} XAF | {rates_data.get('XOF_EUR', 'N/A')} XOF
+
+_Use /convert to calculate amounts_
+            """.strip()
+            
+            # Add inline buttons for groups
+            keyboard = [
+                [
+                    InlineKeyboardButton("🔄 Convert", callback_data="convert"),
+                    InlineKeyboardButton("📊 Full Details", callback_data="rates")
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(compact_rates, reply_markup=reply_markup, parse_mode='Markdown')
+            logger.info(f"Group rates sent to {update.message.chat.type} {update.message.chat_id}")
+            
+        except Exception as e:
+            logger.error(f"Error in group_rates_command: {e}")
+            await update.message.reply_text("❌ Sorry, couldn't fetch rates right now. Please try again later.")
+
+    async def enable_daily_rates(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Enable daily rate broadcasts for this group (admin only)"""
+        if not update or not update.message or not update.message.chat:
+            return
+            
+        if update.message.chat.type not in ['group', 'supergroup']:
+            await update.message.reply_text("This command is only available in groups.")
+            return
+            
+        # Check if user is admin
+        try:
+            if not update.effective_user or not context.bot:
+                await update.message.reply_text("❌ Could not verify admin status.")
+                return
+                
+            chat_member = await context.bot.get_chat_member(update.message.chat_id, update.effective_user.id)
+            if chat_member.status not in ['creator', 'administrator']:
+                await update.message.reply_text("❌ Only group admins can enable daily rates.")
+                return
+        except Exception as e:
+            logger.error(f"Error checking admin status: {e}")
+            await update.message.reply_text("❌ Could not verify admin status.")
+            return
+            
+        # Add group to scheduled groups
+        group_id = update.message.chat_id
+        self.scheduled_groups.add(group_id)
+        
+        # Schedule daily job if not already scheduled
+        await self._schedule_daily_rates(context)
+        
+        await update.message.reply_text(
+            "✅ **Daily FX Rates Enabled!**\n\n"
+            f"📅 Daily rates will be sent at {self.daily_rates_time.strftime('%I:%M %p')} WAT\n"
+            f"🌍 Timezone: Africa/Lagos (WAT)\n"
+            f"🔄 Use `/disabledaily` to stop\n\n"
+            "_Next broadcast will happen at the scheduled time._",
+            parse_mode='Markdown'
+        )
+        logger.info(f"Daily rates enabled for group {group_id}")
+
+    async def disable_daily_rates(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Disable daily rate broadcasts for this group (admin only)"""
+        if not update or not update.message or not update.message.chat:
+            return
+            
+        if update.message.chat.type not in ['group', 'supergroup']:
+            await update.message.reply_text("This command is only available in groups.")
+            return
+            
+        # Check if user is admin
+        try:
+            if not update.effective_user or not context.bot:
+                await update.message.reply_text("❌ Could not verify admin status.")
+                return
+                
+            chat_member = await context.bot.get_chat_member(update.message.chat_id, update.effective_user.id)
+            if chat_member.status not in ['creator', 'administrator']:
+                await update.message.reply_text("❌ Only group admins can disable daily rates.")
+                return
+        except Exception as e:
+            logger.error(f"Error checking admin status: {e}")
+            await update.message.reply_text("❌ Could not verify admin status.")
+            return
+            
+        # Remove group from scheduled groups
+        group_id = update.message.chat_id
+        self.scheduled_groups.discard(group_id)
+        
+        await update.message.reply_text(
+            "✅ **Daily FX Rates Disabled**\n\n"
+            "📅 No more automatic daily rate broadcasts\n"
+            "🔄 Use `/enabledaily` to re-enable\n"
+            "💡 You can still use `/grouprates` anytime!",
+            parse_mode='Markdown'
+        )
+        logger.info(f"Daily rates disabled for group {group_id}")
+
+    async def _schedule_daily_rates(self, context: ContextTypes.DEFAULT_TYPE):
+        """Schedule daily rate broadcasts"""
+        try:
+            if not context or not context.job_queue:
+                logger.warning("Job queue not available for scheduling")
+                return
+                
+            # Remove existing job if any
+            current_jobs = context.job_queue.get_jobs_by_name('daily_rates')
+            for job in current_jobs:
+                job.schedule_removal()
+            
+            # Schedule new daily job
+            context.job_queue.run_daily(
+                self._send_daily_rates,
+                self.daily_rates_time,
+                name='daily_rates'
+            )
+            logger.info(f"Daily rates job scheduled for {self.daily_rates_time}")
+            
+        except Exception as e:
+            logger.error(f"Error scheduling daily rates: {e}")
+
+    async def _send_daily_rates(self, context: ContextTypes.DEFAULT_TYPE):
+        """Send daily rates to all scheduled groups"""
+        if not self.scheduled_groups or not context or not context.bot:
+            return
+            
+        try:
+            # Get fresh rates
+            rates_data = self.fx_trader.base_rates
+            if not rates_data or not rates_data.get('last_updated'):
+                # Force update rates
+                self.fx_trader.get_daily_rates()
+                rates_data = self.fx_trader.base_rates
+            
+            # Create daily broadcast message
+            now = datetime.now(self.timezone)
+            broadcast_message = f"""
+🌅 **Good Morning! Daily FX Rates**
+📅 {now.strftime('%A, %B %d, %Y')}
+⏰ {now.strftime('%I:%M %p WAT')}
+
+💱 **Today's EVA Fx Rates:**
+
+🇺🇸 **USD**: {rates_data.get('XAF_USD', 'N/A')} XAF | {rates_data.get('XOF_USD', 'N/A')} XOF
+💰 **USDT**: {rates_data.get('XAF_USDT', 'N/A')} XAF | {rates_data.get('XOF_USDT', 'N/A')} XOF
+🇦🇪 **AED**: {rates_data.get('XAF_AED', 'N/A')} XAF | {rates_data.get('XOF_AED', 'N/A')} XOF
+🇨🇳 **CNY**: {rates_data.get('XAF_CNY', 'N/A')} XAF | {rates_data.get('XOF_CNY', 'N/A')} XOF
+🇪🇺 **EUR**: {rates_data.get('XAF_EUR', 'N/A')} XAF | {rates_data.get('XOF_EUR', 'N/A')} XOF
+
+💡 _Use /convert for calculations | /disabledaily to stop_
+🌐 _Visit: whatsapp-bot-96xm.onrender.com_
+            """.strip()
+            
+            # Send to all scheduled groups
+            for group_id in list(self.scheduled_groups):
+                try:
+                    await context.bot.send_message(
+                        chat_id=group_id,
+                        text=broadcast_message,
+                        parse_mode='Markdown'
+                    )
+                    logger.info(f"Daily rates sent to group {group_id}")
+                except Exception as e:
+                    logger.error(f"Failed to send daily rates to group {group_id}: {e}")
+                    # Remove failed groups
+                    self.scheduled_groups.discard(group_id)
+                    
+        except Exception as e:
+            logger.error(f"Error in daily rates broadcast: {e}")
 
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle inline button callbacks"""
@@ -226,6 +627,66 @@ class TelegramBot:
             
         username = user.username if user.username else "Unknown"
         message_text = update.message.text
+        chat_type = update.message.chat.type if update.message.chat else 'private'
+        
+        # Group message handling
+        if chat_type in ['group', 'supergroup']:
+            # In groups, only respond if:
+            # 1. Bot is mentioned
+            # 2. Message contains currency keywords
+            # 3. Message is a direct question about rates/trading
+            
+            bot_mention = f"@{context.bot.username}" if context.bot.username else ""
+            is_mentioned = bot_mention in message_text if bot_mention else False
+            
+            # Check for currency/trading keywords
+            currency_keywords = ['usd', 'eur', 'xaf', 'xof', 'aed', 'usdt', 'cny', 'rate', 'rates', 
+                               'exchange', 'convert', 'currency', 'trading', 'fx', 'price', 'eva']
+            has_currency_keyword = any(keyword in message_text.lower() for keyword in currency_keywords)
+            
+            # Only respond in groups if mentioned or contains relevant keywords
+            if not (is_mentioned or has_currency_keyword):
+                return
+                
+            # Remove mention from message for processing
+            if is_mentioned:
+                message_text = message_text.replace(bot_mention, "").strip()
+        
+        # Group moderation (if enabled)
+        if chat_type in ['group', 'supergroup']:
+            if await self._moderate_group_message(update, context):
+                return  # Message was moderated
+        
+        logger.info(f"Message from {user.id if user.id else 'Unknown'} ({username}) in {chat_type}: {message_text}")
+        
+        try:
+            # Check for common patterns first
+            if any(word in message_text.lower() for word in ['rate', 'rates', 'exchange']):
+                if chat_type in ['group', 'supergroup']:
+                    # Use compact format for groups
+                    await self.group_rates_command(update, context)
+                    return
+                else:
+                    response = self.fx_trader.get_daily_rates()
+                
+            elif 'convert' in message_text.lower() or ' to ' in message_text.lower():
+                response = self._parse_conversion_message(message_text)
+                
+            elif any(currency in message_text.upper() for currency in ['USD', 'EUR', 'GBP', 'AED', 'USDT', 'XAF', 'XOF', 'CNY']):
+                response = self._handle_currency_mention(message_text)
+                
+            else:
+                # Use AI for general conversation
+                response = await self._get_ai_response(message_text, user)
+            
+            await update.message.reply_text(response, parse_mode='Markdown')
+            
+        except Exception as e:
+            logger.error(f"Error handling message: {e}")
+            error_msg = "🤖 Sorry, I had a little hiccup there! Could you try rephrasing your question? I'm here to help with FX trading and currency exchange."
+            if chat_type in ['group', 'supergroup']:
+                error_msg = "🤖 Oops! Try /grouphelp for available commands."
+            await update.message.reply_text(error_msg)
 
     async def _get_ai_response(self, message: str, user) -> str:
         """Get AI-powered response for general conversation"""
@@ -274,33 +735,75 @@ class TelegramBot:
             return "🤖 I'm Eva, your FX assistant! I can help you with currency exchange rates, conversions, and trading information. What would you like to know?"
 
     async def _moderate_group_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-        """Moderate messages in groups"""
-        if not self.group_moderation_enabled:
+        """Enhanced content moderation for groups"""
+        if not self.group_moderation_enabled or not update.message or not update.message.text:
             return False
             
         message_text = update.message.text.lower()
         user = update.effective_user
         
+        # Check for spam, inappropriate content, and off-topic messages
+        violation_type = None
+        
         # Check for spam keywords
         for keyword in self.spam_keywords:
             if keyword in message_text:
+                violation_type = "spam"
+                break
+                
+        # Check for inappropriate content
+        if not violation_type:
+            for keyword in self.inappropriate_content:
+                if keyword in message_text:
+                    violation_type = "inappropriate"
+                    break
+                    
+        # Check for off-topic content (less severe)
+        if not violation_type:
+            for keyword in self.off_topic_keywords:
+                if keyword in message_text:
+                    violation_type = "off_topic"
+                    break
+        
+        # Handle violations
+        if violation_type:
+            try:
                 # Delete the message if bot has admin rights
-                try:
-                    await update.message.delete()
-                    # Send warning
+                await update.message.delete()
+                
+                # Send appropriate warning based on violation type
+                if violation_type == "spam":
                     warning_msg = await update.message.reply_text(
-                        f"⚠️ {user.first_name}, please keep the discussion focused on FX trading topics."
+                        f"⚠️ **{user.first_name if user else 'User'}**, spam content is not allowed here.\n"
+                        f"This group is for FX trading discussions only. 🚫",
+                        parse_mode='Markdown'
                     )
-                    # Auto-delete warning after 10 seconds
+                elif violation_type == "inappropriate":
+                    warning_msg = await update.message.reply_text(
+                        f"⚠️ **{user.first_name if user else 'User'}**, inappropriate content detected.\n"
+                        f"Please keep discussions professional and FX-related. 🛡️",
+                        parse_mode='Markdown'
+                    )
+                else:  # off_topic
+                    warning_msg = await update.message.reply_text(
+                        f"💡 **{user.first_name if user else 'User'}**, let's keep the focus on FX trading!\n"
+                        f"Ask me about rates, conversions, or trading tips. 📊",
+                        parse_mode='Markdown'
+                    )
+                
+                # Auto-delete warning after 15 seconds (longer for better readability)
+                if context.job_queue:
                     context.job_queue.run_once(
                         self._delete_message, 
-                        10, 
+                        15, 
                         data={'chat_id': update.message.chat_id, 'message_id': warning_msg.message_id}
                     )
-                    logger.info(f"Moderated message from {user.id} in group {update.message.chat_id}")
-                    return True
-                except Exception as e:
-                    logger.warning(f"Could not moderate message: {e}")
+                
+                logger.info(f"Moderated {violation_type} message from {user.id if user else 'unknown'} in group {update.message.chat_id}")
+                return True
+                
+            except Exception as e:
+                logger.warning(f"Could not moderate message: {e}")
         
         return False
 
