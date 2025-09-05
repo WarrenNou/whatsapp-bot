@@ -1288,9 +1288,23 @@ def handle_fx_commands(message: str) -> Optional[str]:
                 if news_data:
                     response = "📰 **LATEST FINANCIAL NEWS**\n\n"
                     for idx, article in enumerate(news_data[:5], 1):
-                        response += f"**{idx}. {article.get('title', 'No title')}**\n"
-                        response += f"📅 {article.get('published', 'No date')}\n"
-                        response += f"🔗 Source: {article.get('source', 'Unknown')}\n\n"
+                        title = article.get('title', 'No title')
+                        summary = article.get('summary', '')
+                        published = article.get('published', '')
+                        source = article.get('source', 'Unknown')
+                        
+                        response += f"**{idx}. {title}**\n"
+                        
+                        if summary:
+                            # Clean and limit summary
+                            clean_summary = summary.replace('<p>', '').replace('</p>', '').replace('<br>', ' ')
+                            clean_summary = clean_summary[:200] + "..." if len(clean_summary) > 200 else clean_summary
+                            response += f"📝 {clean_summary}\n"
+                        
+                        if published:
+                            response += f"📅 {published}\n"
+                        response += f"🔗 Source: {source}\n\n"
+                        
                     response += "💡 **Want more?** Ask for 'market analysis' or 'trading insights'"
                     return response
                 else:
@@ -1341,30 +1355,51 @@ def handle_fx_commands(message: str) -> Optional[str]:
         if financial_analyzer:
             try:
                 gold_data = financial_analyzer.get_commodities_analysis()
-                if gold_data:
+                if gold_data and gold_data.get('commodities'):
                     response = "🥇 **GOLD & COMMODITIES ANALYSIS**\n\n"
+                    commodities = gold_data['commodities']
                     
-                    if 'gold' in gold_data:
-                        gold_info = gold_data['gold']
-                        response += f"**💰 Gold (XAU/USD):** ${gold_info.get('price', 'N/A')}/oz\n"
+                    # Gold data
+                    if 'Gold' in commodities:
+                        gold_info = commodities['Gold']
+                        price = gold_info.get('price', 'N/A')
                         change = gold_info.get('change', 0)
+                        change_pct = gold_info.get('change_percent', 0)
                         trend = "📈" if change >= 0 else "📉"
-                        response += f"{trend} Change: {change:+.2f} ({gold_info.get('change_percent', 0):+.2f}%)\n\n"
+                        response += f"**💰 Gold (XAU/USD):** ${price}/oz\n"
+                        response += f"{trend} **Change:** {change:+.2f} ({change_pct:+.2f}%)\n\n"
                     
-                    if 'silver' in gold_data:
-                        silver_info = gold_data['silver']
-                        response += f"**🥈 Silver:** ${silver_info.get('price', 'N/A')}/oz\n"
-                        response += f"Change: {silver_info.get('change', 0):+.2f} ({silver_info.get('change_percent', 0):+.2f}%)\n\n"
+                    # Silver data
+                    if 'Silver' in commodities:
+                        silver_info = commodities['Silver']
+                        price = silver_info.get('price', 'N/A')
+                        change_pct = silver_info.get('change_percent', 0)
+                        trend = "📈" if change_pct >= 0 else "📉"
+                        response += f"**🥈 Silver:** ${price}/oz ({change_pct:+.2f}%)\n\n"
+                    
+                    # Oil data
+                    if 'Oil_WTI' in commodities:
+                        oil_info = commodities['Oil_WTI']
+                        price = oil_info.get('price', 'N/A')
+                        change_pct = oil_info.get('change_percent', 0)
+                        trend = "📈" if change_pct >= 0 else "📉"
+                        response += f"**🛢️ WTI Crude:** ${price}/barrel ({change_pct:+.2f}%)\n\n"
+                    
+                    # Analysis summary
+                    summary = gold_data.get('analysis_summary', '')
+                    if summary:
+                        response += f"**📊 Analysis:** {summary}\n\n"
                     
                     response += "💡 **Want trading advice?** Ask for 'trading insights'"
                     return response
                 else:
-                    return "🥇 Gold market data not available at the moment. Please try again later."
+                    return "🥇 No gold/commodities data available at the moment. Please try again later."
             except Exception as e:
-                logger.error(f"Error fetching gold analysis: {e}")
+                logger.error(f"Error fetching gold data: {e}")
                 return "❌ Unable to fetch gold data right now. Please try again later."
         else:
             return "🥇 Gold analysis service is currently unavailable."
+    
     
     # Handle trading insights requests
     if any(keyword in message_lower for keyword in ['trading insights', 'insights', 'trading advice', 'market insights']):

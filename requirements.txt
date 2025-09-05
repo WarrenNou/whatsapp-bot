@@ -10,4 +10,5 @@ requests
 schedule
 python-telegram-bot[all]
 yfinance==0.2.18
-feedparser==6.0.10
+beautifulsoup4
+python-dateutil

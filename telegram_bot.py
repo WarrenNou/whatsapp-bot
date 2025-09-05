@@ -447,8 +447,26 @@ Just type naturally! I understand:
             
             for i, news in enumerate(news_items[:5], 1):
                 title = news['title'][:80] + "..." if len(news['title']) > 80 else news['title']
+                summary = news.get('summary', '')
                 source = news.get('source', 'Unknown')
+                published = news.get('published', '')
+                
                 news_message += f"**{i}. {title}**\n"
+                if summary:
+                    # Clean and limit summary
+                    clean_summary = summary.replace('<p>', '').replace('</p>', '').replace('<br>', ' ')
+                    clean_summary = clean_summary[:150] + "..." if len(clean_summary) > 150 else clean_summary
+                    news_message += f"📝 {clean_summary}\n"
+                if published:
+                    # Format published date
+                    try:
+                        from datetime import datetime
+                        import dateutil.parser
+                        pub_date = dateutil.parser.parse(published)
+                        formatted_date = pub_date.strftime('%a, %d %b %Y %H:%M:%S GMT')
+                        news_message += f"📅 {formatted_date}\n"
+                    except:
+                        news_message += f"📅 {published}\n"
                 news_message += f"📊 Source: {source}\n\n"
                 
             # Add market impact analysis button for detailed view

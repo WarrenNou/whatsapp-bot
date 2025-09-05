@@ -5,22 +5,23 @@ Integrates with Yahoo Finance and news APIs to provide real-time market insights
 
 import yfinance as yf
 import requests
-import feedparser
+import xml.etree.ElementTree as ET
 import json
 from datetime import datetime, timedelta
 import logging
 from typing import Dict, List, Optional, Tuple
 import re
+from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
 class FinancialNewsAnalyzer:
     def __init__(self):
         self.news_sources = {
-            'yahoo_finance': 'https://feeds.finance.yahoo.com/rss/2.0/headline',
             'marketwatch': 'https://feeds.marketwatch.com/marketwatch/marketpulse/',
-            'reuters_business': 'https://www.reutersagency.com/feed/?best-topics=business-finance&post_type=best',
-            'bloomberg': 'https://feeds.bloomberg.com/markets/news.rss'
+            'reuters_business': 'http://feeds.reuters.com/reuters/businessNews',
+            'cnn_business': 'http://rss.cnn.com/rss/money_latest.rss',
+            'yahoo_finance': 'https://feeds.finance.yahoo.com/rss/2.0/headline'
         }
         
         # FX and commodity symbols for market data
@@ -38,7 +39,7 @@ class FinancialNewsAnalyzer:
             'Oil_Brent': 'BZ=F',
             'Bitcoin': 'BTC-USD',
             'Ethereum': 'ETH-USD',
-            'DXY': 'DX-Y.NYB'  # US Dollar Index
+            'DXY': 'DX=F'  # US Dollar Index - updated symbol
         }
         
         # Cache for news and market data
@@ -64,16 +65,39 @@ class FinancialNewsAnalyzer:
             # Get additional news sources
             for source_name, feed_url in list(self.news_sources.items())[:2]:  # Limit to avoid timeout
                 try:
-                    feed = feedparser.parse(feed_url)
-                    for entry in feed.entries[:3]:  # Top 3 from each source
+                    response = requests.get(feed_url, timeout=10)
+                    response.raise_for_status()
+                    
+                    # Parse RSS XML
+                    root = ET.fromstring(response.content)
+                    
+                    # Find all item/entry elements
+                    items = root.findall('.//item') or root.findall('.//entry')
+                    
+                    for item in items[:3]:  # Top 3 from each source
+                        title_elem = item.find('title')
+                        desc_elem = item.find('description') or item.find('summary')
+                        link_elem = item.find('link')
+                        date_elem = item.find('pubDate') or item.find('published')
+                        
+                        title = title_elem.text if title_elem is not None else 'No title'
+                        summary = desc_elem.text if desc_elem is not None else 'No summary'
+                        url = link_elem.text if link_elem is not None else ''
+                        published = date_elem.text if date_elem is not None else ''
+                        
+                        # Clean HTML from summary
+                        if summary:
+                            summary = self._clean_html(summary)
+                        
                         news_item = {
-                            'title': entry.get('title', 'No title'),
-                            'summary': entry.get('summary', entry.get('description', 'No summary')),
-                            'url': entry.get('link', ''),
-                            'published': entry.get('published', ''),
+                            'title': title,
+                            'summary': summary,
+                            'url': url,
+                            'published': published,
                             'source': source_name
                         }
                         all_news.append(news_item)
+                        
                 except Exception as e:
                     logger.warning(f"Failed to get news from {source_name}: {e}")
                     
@@ -96,15 +120,32 @@ class FinancialNewsAnalyzer:
         """Get news specifically from Yahoo Finance"""
         try:
             # Use Yahoo Finance RSS feed
-            feed = feedparser.parse(self.news_sources['yahoo_finance'])
+            response = requests.get(self.news_sources['yahoo_finance'], timeout=10)
+            response.raise_for_status()
+            
+            root = ET.fromstring(response.content)
+            items = root.findall('.//item')
             news_items = []
             
-            for entry in feed.entries[:limit]:
+            for item in items[:limit]:
+                title_elem = item.find('title')
+                desc_elem = item.find('description')
+                link_elem = item.find('link')
+                date_elem = item.find('pubDate')
+                
+                title = title_elem.text if title_elem is not None else 'No title'
+                summary = desc_elem.text if desc_elem is not None else 'No summary'
+                url = link_elem.text if link_elem is not None else ''
+                published = date_elem.text if date_elem is not None else ''
+                
+                if summary:
+                    summary = self._clean_html(summary)
+                
                 news_item = {
-                    'title': entry.get('title', 'No title'),
-                    'summary': self._clean_html(entry.get('summary', entry.get('description', 'No summary'))),
-                    'url': entry.get('link', ''),
-                    'published': entry.get('published', ''),
+                    'title': title,
+                    'summary': summary,
+                    'url': url,
+                    'published': published,
                     'source': 'Yahoo Finance'
                 }
                 news_items.append(news_item)
@@ -115,7 +156,7 @@ class FinancialNewsAnalyzer:
             logger.error(f"Error getting Yahoo Finance news: {e}")
             return []
             
-    def get_market_data(self, symbols: List[str] = None) -> Dict:
+    def get_market_data(self, symbols: Optional[List[str]] = None) -> Dict:
         """Get current market data for FX pairs and commodities"""
         if not symbols:
             symbols = list(self.market_symbols.keys())
@@ -134,9 +175,21 @@ class FinancialNewsAnalyzer:
                     yahoo_symbol = self.market_symbols[symbol_name]
                     try:
                         ticker = yf.Ticker(yahoo_symbol)
-                        hist = ticker.history(period="2d")  # Get 2 days to calculate change
                         
-                        if not hist.empty:
+                        # Try different approaches to get data
+                        hist = None
+                        try:
+                            # Try 5 days first
+                            hist = ticker.history(period="5d")
+                        except:
+                            try:
+                                # Try 1 day
+                                hist = ticker.history(period="1d")
+                            except:
+                                # Try with different interval
+                                hist = ticker.history(period="2d", interval="1d")
+                        
+                        if hist is not None and not hist.empty:
                             current_price = hist['Close'].iloc[-1]
                             prev_price = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
                             change = current_price - prev_price
@@ -148,15 +201,33 @@ class FinancialNewsAnalyzer:
                                 'change_percent': round(float(change_pct), 2),
                                 'timestamp': datetime.now().isoformat()
                             }
+                        else:
+                            # Fallback: provide dummy data to prevent empty responses
+                            market_data[symbol_name] = {
+                                'price': 'N/A',
+                                'change': 0.0,
+                                'change_percent': 0.0,
+                                'timestamp': datetime.now().isoformat(),
+                                'status': 'unavailable'
+                            }
                             
                     except Exception as e:
-                        logger.warning(f"Failed to get data for {symbol_name}: {e}")
+                        logger.warning(f"Failed to get data for {symbol_name} ({yahoo_symbol}): {e}")
+                        # Provide fallback data
+                        market_data[symbol_name] = {
+                            'price': 'N/A',
+                            'change': 0.0,
+                            'change_percent': 0.0,
+                            'timestamp': datetime.now().isoformat(),
+                            'status': 'error'
+                        }
                         
-            # Cache the results
-            self.market_cache[cache_key] = {
-                'data': market_data,
-                'timestamp': datetime.now()
-            }
+            # Cache the results even if some failed
+            if market_data:
+                self.market_cache[cache_key] = {
+                    'data': market_data,
+                    'timestamp': datetime.now()
+                }
             
             return market_data
             
@@ -305,39 +376,53 @@ class FinancialNewsAnalyzer:
             insights = []
             insights.append("📊 **Current Market Analysis & Trading Insights**\n")
             
-            # Market overview
+            # Market overview with specific data
             if currency_analysis.get('dollar_index'):
                 dxy = currency_analysis['dollar_index']
-                insights.append(f"💵 **US Dollar Index (DXY)**: {dxy.get('price', 'N/A')} ({dxy.get('change_percent', 0):+.2f}%)")
+                price = dxy.get('price', 'N/A')
+                change_pct = dxy.get('change_percent', 0)
+                trend = "strengthening" if change_pct > 0 else "weakening" if change_pct < 0 else "stable"
+                insights.append(f"💵 **US Dollar Index (DXY)**: {price} ({change_pct:+.2f}%) - USD {trend}")
                 
             if commodities_analysis.get('commodities', {}).get('Gold'):
                 gold = commodities_analysis['commodities']['Gold']
-                insights.append(f"🥇 **Gold**: ${gold.get('price', 'N/A')} ({gold.get('change_percent', 0):+.2f}%)")
+                price = gold.get('price', 'N/A')
+                change_pct = gold.get('change_percent', 0)
+                insights.append(f"🥇 **Gold**: ${price}/oz ({change_pct:+.2f}%)")
                 
-            # Top FX pairs performance
+            # Top FX pairs performance with specific data
             insights.append("\n🔄 **Major FX Pairs:**")
             fx_data = currency_analysis.get('fx_pairs', {})
             for pair, data in list(fx_data.items())[:4]:
+                price = data.get('price', 'N/A')
                 change_pct = data.get('change_percent', 0)
                 emoji = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
-                insights.append(f"{emoji} **{pair}**: {data.get('price', 'N/A')} ({change_pct:+.2f}%)")
+                insights.append(f"{emoji} **{pair}**: {price} ({change_pct:+.2f}%)")
                 
-            # Market sentiment
+            # Market sentiment with specific news context
             sentiment = news_impact.get('overall_sentiment', 'neutral')
             sentiment_emoji = "😊" if sentiment == 'positive' else "😟" if sentiment == 'negative' else "😐"
             insights.append(f"\n{sentiment_emoji} **Market Sentiment**: {sentiment.title()}")
             
-            # High impact news
+            # High impact news with specific titles
             high_impact_news = news_impact.get('high_impact', [])
             if high_impact_news:
                 insights.append(f"\n⚠️ **Key Market Movers** ({len(high_impact_news)} items):")
                 for news_item in high_impact_news[:2]:
-                    insights.append(f"• {news_item['title']}")
-                    
-            # FX specific insights
+                    title = news_item['title'][:100] + "..." if len(news_item['title']) > 100 else news_item['title']
+                    insights.append(f"• {title}")
+                    summary = news_item.get('summary', '')
+                    if summary:
+                        clean_summary = summary.replace('<p>', '').replace('</p>', '').replace('<br>', ' ')[:120] + "..."
+                        insights.append(f"  📝 {clean_summary}")
+                        
+            # FX specific insights with market context
             fx_relevant_news = news_impact.get('fx_relevant', [])
             if fx_relevant_news:
                 insights.append(f"\n💱 **FX Market Impact** ({len(fx_relevant_news)} news items):")
+                for fx_news in fx_relevant_news[:1]:
+                    title = fx_news['title'][:80] + "..." if len(fx_news['title']) > 80 else fx_news['title']
+                    insights.append(f"• {title}")
                 insights.append("Recent developments may affect currency pairs.")
                 
             # Trading recommendations based on user query
@@ -347,11 +432,34 @@ class FinancialNewsAnalyzer:
                     insights.append(f"\n🎯 **Specific to your query:**")
                     insights.append(specific_insights)
                     
-            # General trading advice
+            # General trading advice with current market context
             insights.append(f"\n💡 **Trading Tips:**")
+            
+            # Dynamic advice based on current conditions
+            if abs(currency_analysis.get('dollar_index', {}).get('change_percent', 0)) > 0.5:
+                insights.append("• Strong USD movement detected - monitor USD pairs closely")
+            
+            if len(high_impact_news) > 2:
+                insights.append("• High news flow today - expect increased volatility")
+            
+            if sentiment != 'neutral':
+                insights.append(f"• Market showing {sentiment} bias - align strategies accordingly")
+                
             insights.append("• Monitor economic calendar for upcoming releases")
             insights.append("• Consider risk management in volatile conditions")
             insights.append("• Stay updated with central bank communications")
+            
+            # Add current market hours info
+            from datetime import datetime, timezone
+            now_utc = datetime.now(timezone.utc)
+            current_hour = now_utc.hour
+            
+            if 13 <= current_hour <= 22:  # London/NY overlap
+                insights.append("• Currently in London/NY session overlap - higher liquidity expected")
+            elif 0 <= current_hour <= 9:  # Asian session
+                insights.append("• Asian session active - focus on JPY and AUD pairs")
+            elif 9 <= current_hour <= 17:  # London session
+                insights.append("• London session active - EUR and GBP pairs most active")
             
             # Disclaimer
             insights.append(f"\n⚠️ **Disclaimer**: Analysis based on current market data. Not financial advice. Always consult professionals and manage risks.")

@@ -334,6 +334,22 @@ Reply: "100 USD", "500 CNY", "200 EUR" or "1000 XOF"
             amount = float(amount)
             currency = currency.upper()
             
+            # Map common currency aliases to standard codes
+            currency_mappings = {
+                'EURO': 'EUR',
+                'EUROS': 'EUR',
+                'TETHER': 'USDT',
+                'RMB': 'CNY',
+                'YUAN': 'CNY',
+                'DOLLAR': 'USD',
+                'DOLLARS': 'USD',
+                'DIRHAM': 'AED',
+                'DIRHAMS': 'AED'
+            }
+            
+            if currency in currency_mappings:
+                currency = currency_mappings[currency]
+            
             if not self.calculate_rates():
                 return "⚠️ Unable to fetch current rates. Please try again."
             
