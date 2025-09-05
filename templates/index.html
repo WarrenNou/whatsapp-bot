@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVA Fx - Chat Support</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="fas fa-exchange-alt logo-icon"></i>
+                    <div class="header-text">
+                        <h1>EVA Fx Trading</h1>
+                        <p>Premium Currency Exchange</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="social-links">
+                        <a href="https://t.me/+dKTLjP_OHeA3MDE0" target="_blank" class="telegram-link" title="Join our Telegram channel">
+                            <i class="fab fa-telegram"></i>
+                            <span>Join Channel</span>
+                        </a>
+                    </div>
+                    <div class="status-indicator online">
+                        <span class="status-dot"></span>
+                        <span>Online</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot-message welcome-message">
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-text">
+                        <h3>👋 Welcome to EVA Fx Trading!</h3>
+                        <p>🤖 <strong>AI DISCLAIMER:</strong> This is an AI-powered trading assistant. All rates and information are automatically generated and should be verified before making any financial decisions.</p>
+                        <br>
+                        <p>I can help you with:</p>
+                        <ul>
+                            <li>📊 Current exchange rates</li>
+                            <li>💰 Currency calculations</li>
+                            <li>🔄 Trading processes</li>
+                            <li>❓ Answer your questions</li>
+                        </ul>
+                        <p><strong>Try asking:</strong> "rates", "100 USD", "500 CNY", or "how to trade"</p>
+                        <br>
+                        <p>📢 <strong>Join our Telegram channel for updates:</strong> <a href="https://t.me/+dKTLjP_OHeA3MDE0" target="_blank" class="telegram-welcome-link">EVA Fx Channel</a></p>
+                    </div>
+                    <div class="message-time"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <button class="quick-btn" onclick="sendQuickMessage('rates')">
+                <i class="fas fa-chart-line"></i> Current Rates
+            </button>
+            <button class="quick-btn" onclick="sendQuickMessage('100 USD')">
+                <i class="fas fa-calculator"></i> Calculate 100 USD
+            </button>
+            <button class="quick-btn" onclick="sendQuickMessage('500 CNY')">
+                <i class="fas fa-yen-sign"></i> Calculate 500 CNY
+            </button>
+            <button class="quick-btn" onclick="sendQuickMessage('how to trade')">
+                <i class="fas fa-question-circle"></i> How to Trade
+            </button>
+            <a href="https://t.me/+dKTLjP_OHeA3MDE0" target="_blank" class="quick-btn telegram-quick-btn">
+                <i class="fab fa-telegram"></i> Join Telegram
+            </a>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <input type="text" id="message-input" placeholder="Type your message here..." autocomplete="off">
+                <button id="send-button" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="typing-indicator" id="typing-indicator">
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <span>EVA is typing...</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -272,7 +272,9 @@ class FXTrader:
 💰 **Quick Calculate:**
 Reply: "100 USD", "500 CNY", "200 EUR" or "1000 XOF"
 
-📞 **Contact EVA Fx:** +1 (415) 523-8886
+🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/chat
+💬 *Live chatbot support - Ask questions, get quotes, complete transactions*
+
 ⚠️ *Premium exchange rates by EVA Fx. Contact us for actual transactions.*
 
 🕒 24/7 Service | 🔄 Live Updates | 🌍 Global Coverage
@@ -302,7 +304,7 @@ Reply: "100 USD", "500 CNY", "200 EUR" or "1000 XOF"
 Rates: 1 USD = {self.base_rates['XAF_USD']:,} XAF | {self.base_rates['XOF_USD']:,} XOF
 *Service fee included*
 
-📞 **Contact EVA Fx:** +1 (415) 523-8886
+🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/chat
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *Premium exchange rates by EVA Fx*
                 """.strip()
@@ -320,7 +322,7 @@ Rates: 1 USD = {self.base_rates['XAF_USD']:,} XAF | {self.base_rates['XOF_USD']:
 Rates: 1 USDT = {self.base_rates['XAF_USDT']:,} XAF | {self.base_rates['XOF_USDT']:,} XOF
 *Service fee included*
 
-📞 **Contact EVA Fx:** +1 (415) 523-8886
+🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/chat
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *Premium exchange rates by EVA Fx*
                 """.strip()
@@ -338,7 +340,7 @@ Rates: 1 USDT = {self.base_rates['XAF_USDT']:,} XAF | {self.base_rates['XOF_USDT
 Rates: 1 AED = {self.base_rates['XAF_AED']:,} XAF | {self.base_rates['XOF_AED']:,} XOF
 *Service fee included*
 
-📞 **Contact EVA Fx:** +1 (415) 523-8886
+🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/chat
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *Premium exchange rates by EVA Fx*
                 """.strip()
@@ -356,7 +358,7 @@ Rates: 1 AED = {self.base_rates['XAF_AED']:,} XAF | {self.base_rates['XOF_AED']:
 Rates: 1 CNY = {self.base_rates['XAF_CNY']:,} XAF | {self.base_rates['XOF_CNY']:,} XOF
 *Premium China market rates*
 
-📞 **Contact EVA Fx:** +1 (415) 523-8886
+🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/chat
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *Premium exchange rates by EVA Fx*
                 """.strip()
@@ -374,18 +376,18 @@ Rates: 1 CNY = {self.base_rates['XAF_CNY']:,} XAF | {self.base_rates['XOF_CNY']:
 Rates: 1 EUR = {self.base_rates['XAF_EUR']:,} XAF | {self.base_rates['XOF_EUR']:,} XOF
 *Premium European market rates*
 
-📞 **Contact EVA Fx:** +1 (415) 523-8886
+🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/chat
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *Premium exchange rates by EVA Fx*
                 """.strip()
             else:
-                return f"❌ Currency '{currency}' not supported. Available: USD, USDT, AED, CNY, EUR\n\n📞 **Contact EVA Fx:** +1 (415) 523-8886"
+                return f"❌ Currency '{currency}' not supported. Available: USD, USDT, AED, CNY, EUR\n\n🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/chat"
                 
         except ValueError:
-            return "❌ Invalid amount. Please enter a number (e.g., '100 USD')\n\n📞 **Contact EVA Fx:** +1 (415) 523-8886"
+            return "❌ Invalid amount. Please enter a number (e.g., '100 USD')\n\n🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/chat"
         except Exception as e:
             logger.error(f"Error calculating exchange: {e}")
-            return "⚠️ Error processing exchange calculation. Please try again.\n\n📞 **Contact EVA Fx:** +1 (415) 523-8886"
+            return "⚠️ Error processing exchange calculation. Please try again.\n\n🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/chat"
     
     def get_trading_process_info(self, amount, currency, target_currency="XAF"):
         """Get trading process information with deposit requirements"""
@@ -492,10 +494,10 @@ Rate: 1 {currency} = {rate:,} {target_currency}
 • Only use our official dedicated accounts
 
 🔒 **VERIFICATION:** Professional deposit verification system
-📞 **EVA Fx Contact:** +1 (415) 523-8886
-📞 **Trading Support:** Contact will be shared when ready
+🌐 **EVA Fx Contact:** https://whatsapp-bot-96xm.onrender.com/chat
+� **Trading Support:** Chat available 24/7 for instant support
 
-**Ready to proceed? EVA Fx will share account details next.**
+**Ready to proceed? Visit our chat portal for live assistance.**
             """.strip()
             
         except ValueError:
