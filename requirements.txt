@@ -9,3 +9,5 @@ python-dotenv
 requests
 schedule
 python-telegram-bot[all]
+yfinance
+feedparser
