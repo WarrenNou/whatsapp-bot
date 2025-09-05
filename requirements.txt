@@ -12,3 +12,4 @@ python-telegram-bot[all]
 yfinance==0.2.18
 beautifulsoup4
 python-dateutil
+finvizfinance
