@@ -1,6 +1,6 @@
 """
 FX Trading Rate Provider
-Provides daily exchange rates for XAF/USDT, XAF/AED with free exchange rate API
+Provides daily exchange rates for XAF/USDT, XAF/AED with Yahoo Finance API for better accuracy
 """
 
 import requests
@@ -8,6 +8,7 @@ import json
 from datetime import datetime, timedelta
 import pytz
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -27,15 +28,56 @@ class FXTrader:
             'last_updated': ''
         }
         self.usd_markup_percentage = 8  # 8% markup on USD rates
-        self.usdt_markup_percentage = 8 # 8.5% markup on USDT rates
+        self.usdt_markup_percentage = 8.5 # 8.5% markup on USDT rates
         self.aed_markup_percentage = 8.5  # 8.5% markup on AED rates
-        self.xof_markup_percentage = 3.5  # 3.5% markup on XOF rates
+        self.xof_markup_percentage = 4  # 3.5% markup on XOF rates
         # New currency markups
         self.xaf_cny_markup_percentage = 9.5  # 9.5% markup on XAF/CNY rates
         self.xof_cny_markup_percentage = 5.0  # 5% markup on XOF/CNY rates
         self.xaf_eur_markup_percentage = 7.0  # 6% markup on XAF/EUR rates
         self.xof_eur_markup_percentage = 4.0  # 4% markup on XOF/EUR rates
-        self.api_base_url = "https://api.exchangerate-api.com/v4/latest"
+        # Yahoo Finance API endpoints
+        self.yahoo_finance_url = "https://query1.finance.yahoo.com/v8/finance/chart"
+    
+    def get_yahoo_rate(self, symbol):
+        """Get exchange rate from Yahoo Finance API"""
+        try:
+            url = f"{self.yahoo_finance_url}/{symbol}?interval=1d&range=1d"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Extract current price from Yahoo Finance response
+                result = data.get('chart', {}).get('result', [])
+                if result and len(result) > 0:
+                    quote = result[0].get('meta', {})
+                    current_price = quote.get('regularMarketPrice') or quote.get('previousClose')
+                    if current_price:
+                        logger.info(f"Yahoo Finance rate for {symbol}: {current_price}")
+                        return float(current_price)
+            
+            logger.warning(f"Yahoo Finance failed for {symbol}, status: {response.status_code}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error fetching Yahoo Finance rate for {symbol}: {e}")
+            return None
+    
+    def get_fallback_rate(self, base_currency):
+        """Fallback to exchangerate-api if Yahoo Finance fails"""
+        try:
+            url = f"https://api.exchangerate-api.com/v4/latest/{base_currency}"
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('rates', {})
+            return None
+        except Exception as e:
+            logger.error(f"Fallback API error for {base_currency}: {e}")
+            return None
     
     def get_greeting_and_disclaimer(self):
         """Get greeting and AI disclaimer for messages"""
@@ -46,109 +88,114 @@ class FXTrader:
 """
     
     def get_usd_xaf_rate(self):
-        """Get USD/XAF rate from free exchange rate API"""
+        """Get USD/XAF rate from Yahoo Finance with fallback"""
         try:
-            # Get USD rates
-            response = requests.get(f"{self.api_base_url}/USD", timeout=10)
-            response.raise_for_status()
-            data = response.json()
+            # Try Yahoo Finance first
+            rate = self.get_yahoo_rate("USDXAF=X")
+            if rate:
+                return rate
             
-            if 'rates' in data and 'XAF' in data['rates']:
-                rate = data['rates']['XAF']
-                logger.info(f"Retrieved USD/XAF rate from API: {rate}")
-                return float(rate)
-            else:
-                logger.warning("XAF rate not found in API response")
-                return None
-                
+            # Fallback to exchange rate API
+            fallback_data = self.get_fallback_rate("USD")
+            if fallback_data and 'XAF' in fallback_data:
+                rate = fallback_data['XAF']
+                logger.info(f"Fallback USD/XAF rate: {rate}")
+                return rate
+            
+            logger.error("All USD/XAF rate sources failed")
+            return 558.0  # Use your observed rate as final fallback
+            
         except Exception as e:
             logger.error(f"Error fetching USD/XAF rate: {e}")
-            # Fallback to approximate rate if API fails
-            return 602.5  # Approximate current rate as fallback
+            return 558.0
     
     def get_aed_usd_rate(self):
-        """Get AED/USD rate from free exchange rate API"""
+        """Get AED/USD rate from Yahoo Finance with fallback"""
         try:
-            # Get AED rates
-            response = requests.get(f"{self.api_base_url}/AED", timeout=10)
-            response.raise_for_status()
-            data = response.json()
+            # Try Yahoo Finance first
+            rate = self.get_yahoo_rate("AEDUSD=X")
+            if rate:
+                return rate
             
-            if 'rates' in data and 'USD' in data['rates']:
-                rate = data['rates']['USD']
-                logger.info(f"Retrieved AED/USD rate from API: {rate}")
-                return float(rate)
-            else:
-                logger.warning("USD rate not found in AED API response")
-                return None
+            # Fallback to exchange rate API
+            fallback_data = self.get_fallback_rate("AED")
+            if fallback_data and 'USD' in fallback_data:
+                rate = fallback_data['USD']
+                logger.info(f"Fallback AED/USD rate: {rate}")
+                return rate
                 
+            # Final fallback - approximate rate
+            return 0.272  # Approximate current rate as fallback
+            
         except Exception as e:
             logger.error(f"Error fetching AED/USD rate: {e}")
-            # Fallback to approximate rate if API fails
-            return 0.272  # Approximate current rate as fallback
+            return 0.272
     
     def get_usd_xof_rate(self):
-        """Get USD/XOF rate from free exchange rate API"""
+        """Get USD/XOF rate from Yahoo Finance with fallback"""
         try:
-            # Get USD rates
-            response = requests.get(f"{self.api_base_url}/USD", timeout=10)
-            response.raise_for_status()
-            data = response.json()
+            # Try Yahoo Finance first
+            rate = self.get_yahoo_rate("USDXOF=X")
+            if rate:
+                return rate
             
-            if 'rates' in data and 'XOF' in data['rates']:
-                rate = data['rates']['XOF']
-                logger.info(f"Retrieved USD/XOF rate from API: {rate}")
-                return float(rate)
-            else:
-                logger.warning("XOF rate not found in API response")
-                return None
+            # Fallback to exchange rate API
+            fallback_data = self.get_fallback_rate("USD")
+            if fallback_data and 'XOF' in fallback_data:
+                rate = fallback_data['XOF']
+                logger.info(f"Fallback USD/XOF rate: {rate}")
+                return rate
                 
+            # XOF typically close to XAF, use a similar rate
+            return 558.0  # Approximate rate as fallback
+            
         except Exception as e:
             logger.error(f"Error fetching USD/XOF rate: {e}")
-            # Fallback to approximate rate if API fails
-            return 615.0  # Approximate current rate as fallback
+            return 558.0
     
     def get_usd_cny_rate(self):
-        """Get USD/CNY rate from free exchange rate API"""
+        """Get USD/CNY rate from Yahoo Finance with fallback"""
         try:
-            # Get USD rates
-            response = requests.get(f"{self.api_base_url}/USD", timeout=10)
-            response.raise_for_status()
-            data = response.json()
+            # Try Yahoo Finance first
+            rate = self.get_yahoo_rate("USDCNY=X")
+            if rate:
+                return rate
             
-            if 'rates' in data and 'CNY' in data['rates']:
-                rate = data['rates']['CNY']
-                logger.info(f"Retrieved USD/CNY rate from API: {rate}")
-                return float(rate)
-            else:
-                logger.warning("CNY rate not found in API response")
-                return None
+            # Fallback to exchange rate API
+            fallback_data = self.get_fallback_rate("USD")
+            if fallback_data and 'CNY' in fallback_data:
+                rate = fallback_data['CNY']
+                logger.info(f"Fallback USD/CNY rate: {rate}")
+                return rate
                 
+            # Final fallback - approximate rate
+            return 7.14  # Approximate current rate as fallback
+            
         except Exception as e:
             logger.error(f"Error fetching USD/CNY rate: {e}")
-            # Fallback to approximate rate if API fails
-            return 7.25  # Approximate current rate as fallback
+            return 7.14
     
     def get_usd_eur_rate(self):
-        """Get USD/EUR rate from free exchange rate API"""
+        """Get USD/EUR rate from Yahoo Finance with fallback"""
         try:
-            # Get USD rates
-            response = requests.get(f"{self.api_base_url}/USD", timeout=10)
-            response.raise_for_status()
-            data = response.json()
+            # Try Yahoo Finance first
+            rate = self.get_yahoo_rate("USDEUR=X")
+            if rate:
+                return rate
             
-            if 'rates' in data and 'EUR' in data['rates']:
-                rate = data['rates']['EUR']
-                logger.info(f"Retrieved USD/EUR rate from API: {rate}")
-                return float(rate)
-            else:
-                logger.warning("EUR rate not found in API response")
-                return None
+            # Fallback to exchange rate API
+            fallback_data = self.get_fallback_rate("USD")
+            if fallback_data and 'EUR' in fallback_data:
+                rate = fallback_data['EUR']
+                logger.info(f"Fallback USD/EUR rate: {rate}")
+                return rate
                 
+            # Final fallback - approximate rate
+            return 0.858  # Approximate current rate as fallback
+            
         except Exception as e:
             logger.error(f"Error fetching USD/EUR rate: {e}")
-            # Fallback to approximate rate if API fails
-            return 0.92  # Approximate current rate as fallback
+            return 0.858
     
     def calculate_rates(self):
         """Calculate all FX rates with markup"""
@@ -195,10 +242,18 @@ class FXTrader:
             xof_eur_markup_multiplier = 1 + (self.xof_eur_markup_percentage / 100)
             
             # XAF/USD with 8% markup (how much XAF to buy 1 USD from us)
-            self.base_rates['XAF_USD'] = round(usd_xaf_rate * usd_markup_multiplier, 2)
+            calculated_usd_rate = round(usd_xaf_rate * usd_markup_multiplier, 2)
+            self.base_rates['XAF_USD'] = max(calculated_usd_rate, 604.5)  # Minimum floor of 604.5
             
-            # XAF/USDT with 8.5% markup
-            self.base_rates['XAF_USDT'] = round(usd_xaf_rate * usdt_markup_multiplier, 2)
+            # XAF/USDT with 8% markup 
+            calculated_usdt_rate = round(usd_xaf_rate * usdt_markup_multiplier, 2)
+            self.base_rates['XAF_USDT'] = max(calculated_usdt_rate, 604.5)  # Minimum floor of 604.5
+            
+            # Log if floor rate is applied
+            if calculated_usd_rate < 604.5:
+                logger.info(f"USD/XAF floor rate applied: {calculated_usd_rate} → 604.5")
+            if calculated_usdt_rate < 604.5:
+                logger.info(f"USDT/XAF floor rate applied: {calculated_usdt_rate} → 604.5")
             
             # XAF/AED with 8.5% markup
             # First convert: AED -> USD -> XAF, then add markup
