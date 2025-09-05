@@ -3,8 +3,11 @@ import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 from fx_trader import FXTrader
+from openai import OpenAI
 import asyncio
 import json
+import re
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -18,6 +21,25 @@ class TelegramBot:
         self.token = token
         self.fx_trader = FXTrader()
         self.application = None
+        
+        # Initialize OpenAI client
+        self.openai_client = None
+        try:
+            openai_key = os.getenv('OPENAI_API_KEY')
+            if openai_key:
+                self.openai_client = OpenAI(api_key=openai_key)
+                logger.info("OpenAI client initialized for Telegram bot")
+            else:
+                logger.warning("OpenAI API key not found - AI responses will be limited")
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenAI client: {e}")
+        
+        # Group content moderation settings
+        self.group_moderation_enabled = True
+        self.spam_keywords = ['spam', 'scam', 'buy now', 'click here', 'limited time']
+        
+        # AI personality for more human responses
+        self.ai_personality = """You are Eva, a friendly and professional FX trading assistant. You help people with currency exchange, rates, and trading information. You are knowledgeable, helpful, and speak in a warm, conversational tone. You work for EVA Fx, a trusted currency exchange service. Always be helpful but also include appropriate disclaimers about trading risks when discussing financial matters."""
         
     async def setup_bot(self):
         """Initialize the bot application"""
@@ -185,34 +207,124 @@ class TelegramBot:
         logger.info(f"Button callback handled: {callback_data} for user {query.from_user.id}")
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle regular text messages"""
+        """Handle regular text messages with AI integration"""
         user = update.effective_user
-        message_text = update.message.text.lower()
+        message_text = update.message.text
         
-        logger.info(f"Message from {user.id} ({user.username}): {update.message.text}")
+        # Group moderation
+        if update.message.chat.type in ['group', 'supergroup']:
+            if await self._moderate_group_message(update, context):
+                return  # Message was moderated
+        
+        logger.info(f"Message from {user.id} ({user.username}): {message_text}")
         
         try:
-            # Check for common patterns
-            if any(word in message_text for word in ['rate', 'rates', 'exchange']):
+            # Check for common patterns first
+            if any(word in message_text.lower() for word in ['rate', 'rates', 'exchange']):
                 response = self.fx_trader.get_daily_rates()
                 
-            elif 'convert' in message_text or 'to' in message_text:
-                # Try to parse conversion request
-                response = self._parse_conversion_message(update.message.text)
+            elif 'convert' in message_text.lower() or ' to ' in message_text.lower():
+                response = self._parse_conversion_message(message_text)
                 
-            elif any(currency in message_text.upper() for currency in ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD']):
-                # Handle currency amount mentions
-                response = self._handle_currency_mention(update.message.text)
+            elif any(currency in message_text.upper() for currency in ['USD', 'EUR', 'GBP', 'AED', 'USDT', 'XAF', 'XOF', 'CNY']):
+                response = self._handle_currency_mention(message_text)
                 
             else:
-                # Use OpenAI for general queries (you'll need to implement this)
-                response = "💬 I'm here to help with FX trading! Try asking about rates, conversions, or use /help for more options."
+                # Use AI for general conversation
+                response = await self._get_ai_response(message_text, user)
             
-            await update.message.reply_text(response)
+            await update.message.reply_text(response, parse_mode='Markdown')
             
         except Exception as e:
             logger.error(f"Error handling message: {e}")
-            await update.message.reply_text("❌ Sorry, I encountered an error. Please try again or use /help.")
+            await update.message.reply_text("🤖 Sorry, I had a little hiccup there! Could you try rephrasing your question? I'm here to help with FX trading and currency exchange.")
+
+    async def _get_ai_response(self, message: str, user) -> str:
+        """Get AI-powered response for general conversation"""
+        if not self.openai_client:
+            return "💬 I'm here to help with FX trading! Try asking about rates, conversions, or use /help for more options."
+        
+        try:
+            # Create context-aware prompt
+            prompt = f"""
+            {self.ai_personality}
+            
+            Current context: You're chatting with {user.first_name or 'a user'} via Telegram.
+            Their message: "{message}"
+            
+            Important: If they're asking about currency exchange, trading, or rates, be helpful and informative.
+            If it's general conversation, be friendly but gently guide them back to FX-related topics.
+            Always include relevant disclaimers for financial advice.
+            Keep responses concise and engaging.
+            Use emojis appropriately to make responses feel warm and human.
+            
+            Available services:
+            - Live exchange rates (XAF, XOF, USD, EUR, AED, USDT, CNY)
+            - Currency conversions
+            - FX trading guidance
+            - Contact via website: https://whatsapp-bot-96xm.onrender.com
+            - Telegram bot: https://t.me/evafx_assistant_bot
+            """
+            
+            response = self.openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": message}
+                ],
+                max_tokens=300,
+                temperature=0.7
+            )
+            
+            ai_response = response.choices[0].message.content.strip()
+            
+            # Add EVA Fx branding
+            return f"{ai_response}\n\n💫 *Eva - Your FX Trading Assistant*"
+            
+        except Exception as e:
+            logger.error(f"AI response error: {e}")
+            return "🤖 I'm Eva, your FX assistant! I can help you with currency exchange rates, conversions, and trading information. What would you like to know?"
+
+    async def _moderate_group_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+        """Moderate messages in groups"""
+        if not self.group_moderation_enabled:
+            return False
+            
+        message_text = update.message.text.lower()
+        user = update.effective_user
+        
+        # Check for spam keywords
+        for keyword in self.spam_keywords:
+            if keyword in message_text:
+                # Delete the message if bot has admin rights
+                try:
+                    await update.message.delete()
+                    # Send warning
+                    warning_msg = await update.message.reply_text(
+                        f"⚠️ {user.first_name}, please keep the discussion focused on FX trading topics."
+                    )
+                    # Auto-delete warning after 10 seconds
+                    context.job_queue.run_once(
+                        self._delete_message, 
+                        10, 
+                        data={'chat_id': update.message.chat_id, 'message_id': warning_msg.message_id}
+                    )
+                    logger.info(f"Moderated message from {user.id} in group {update.message.chat_id}")
+                    return True
+                except Exception as e:
+                    logger.warning(f"Could not moderate message: {e}")
+        
+        return False
+
+    async def _delete_message(self, context: ContextTypes.DEFAULT_TYPE):
+        """Helper function to delete messages"""
+        try:
+            await context.bot.delete_message(
+                chat_id=context.job.data['chat_id'],
+                message_id=context.job.data['message_id']
+            )
+        except Exception as e:
+            logger.warning(f"Could not delete message: {e}")
 
     def _parse_conversion_message(self, message: str) -> str:
         """Parse conversion requests from natural language"""
