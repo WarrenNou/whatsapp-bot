@@ -75,12 +75,14 @@
               <ul>
                 <li>📊 Current exchange rates</li>
                 <li>💰 Currency calculations</li>
-                <li>🔄 Trading processes</li>
+                <li>� Latest financial news</li>
+                <li>📈 Market analysis & insights</li>
+                <li>🥇 Gold and commodities data</li>
+                <li>�🔄 Trading processes</li>
                 <li>❓ Answer your questions</li>
               </ul>
               <p>
-                <strong>Try asking:</strong> "rates", "100 USD", "500 CNY", or
-                "how to trade"
+                <strong>Try asking:</strong> "rates", "100 USD", "financial news", "market analysis", or "gold prices"
               </p>
               <br />
               <div class="telegram-links-welcome">
@@ -112,14 +114,20 @@
         <button class="quick-btn" onclick="sendQuickMessage('rates')">
           <i class="fas fa-chart-line"></i> Current Rates
         </button>
+        <button class="quick-btn" onclick="sendQuickMessage('financial news')">
+          <i class="fas fa-newspaper"></i> Financial News
+        </button>
+        <button class="quick-btn" onclick="sendQuickMessage('market analysis')">
+          <i class="fas fa-chart-bar"></i> Market Analysis
+        </button>
+        <button class="quick-btn" onclick="sendQuickMessage('gold prices')">
+          <i class="fas fa-coins"></i> Gold Prices
+        </button>
         <button class="quick-btn" onclick="sendQuickMessage('100 USD')">
           <i class="fas fa-calculator"></i> Calculate 100 USD
         </button>
-        <button class="quick-btn" onclick="sendQuickMessage('500 CNY')">
-          <i class="fas fa-yen-sign"></i> Calculate 500 CNY
-        </button>
-        <button class="quick-btn" onclick="sendQuickMessage('how to trade')">
-          <i class="fas fa-question-circle"></i> How to Trade
+        <button class="quick-btn" onclick="sendQuickMessage('trading insights')">
+          <i class="fas fa-lightbulb"></i> Trading Insights
         </button>
         <div class="telegram-quick-actions">
           <a

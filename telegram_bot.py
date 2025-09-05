@@ -3,6 +3,7 @@ import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 from fx_trader import FXTrader
+from financial_news import FinancialNewsAnalyzer
 from openai import OpenAI
 import asyncio
 import json
@@ -25,6 +26,7 @@ class TelegramBot:
     def __init__(self, token: str):
         self.token = token
         self.fx_trader = FXTrader()
+        self.financial_analyzer = FinancialNewsAnalyzer()  # Add financial news analyzer
         self.application = None
         
         # Initialize OpenAI client
@@ -72,8 +74,17 @@ class TelegramBot:
         self.daily_rates_time = time(10, 0)  # 10:00 AM
         self.timezone = pytz.timezone('Africa/Lagos')  # WAT timezone
         
-        # AI personality for more human responses
-        self.ai_personality = """You are Eva, a friendly and professional FX trading assistant. You help people with currency exchange, rates, and trading information. You are knowledgeable, helpful, and speak in a warm, conversational tone. You work for EVA Fx, a trusted currency exchange service. Always be helpful but also include appropriate disclaimers about trading risks when discussing financial matters."""
+        # AI personality for more human responses with financial expertise
+        self.ai_personality = """You are Eva, a friendly and professional FX trading assistant with access to real-time financial news and market data. You help people with currency exchange, rates, trading information, and market analysis. You are knowledgeable about:
+
+- Current FX rates and currency trends
+- Financial news and market-moving events  
+- Gold, commodities, and their correlation with currencies
+- Economic indicators and their impact on trading
+- Risk management and trading strategies
+- Market sentiment analysis
+
+You speak in a warm, conversational tone while providing accurate, data-driven insights. Always include appropriate disclaimers about trading risks when discussing financial matters. When users ask about market conditions, you can reference current news and data to provide informed analysis."""
         
     async def setup_bot(self):
         """Initialize the bot application"""
@@ -84,6 +95,12 @@ class TelegramBot:
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("rates", self.rates_command))
         self.application.add_handler(CommandHandler("convert", self.convert_command))
+        
+        # Financial news and market analysis commands
+        self.application.add_handler(CommandHandler("news", self.news_command))
+        self.application.add_handler(CommandHandler("market", self.market_analysis_command))
+        self.application.add_handler(CommandHandler("gold", self.gold_analysis_command))
+        self.application.add_handler(CommandHandler("insights", self.trading_insights_command))
         
         # Group-specific commands
         self.application.add_handler(CommandHandler("grouphelp", self.group_help_command))
@@ -102,6 +119,10 @@ class TelegramBot:
             BotCommand("help", "Show help information"),
             BotCommand("rates", "Get current exchange rates"),
             BotCommand("convert", "Convert currencies (e.g., /convert 100 USD to EUR)"),
+            BotCommand("news", "Get latest financial news"),
+            BotCommand("market", "Comprehensive market analysis"),
+            BotCommand("gold", "Gold and precious metals analysis"),
+            BotCommand("insights", "AI-powered trading insights"),
             BotCommand("grouprates", "Get compact rates format for groups"),
             BotCommand("grouphelp", "Show group-specific help and commands"),
         ]
@@ -194,33 +215,82 @@ class TelegramBot:
             logger.info(f"Start command sent to {chat_type} chat")
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /help command"""
-        help_text = """
-🤖 *EVA Fx Assistant Help*
-
-*Available Commands:*
-/start - Welcome message and quick actions
-/help - Show this help message
-/rates - Get current exchange rates
-/convert - Convert currencies (e.g., /convert 100 USD to EUR)
-
-*Quick Actions:*
-• Type currency amounts (e.g., "100 USD", "50 EUR")
-• Ask about exchange rates
-• Request currency conversions
-• Get FX market information
-
-*Examples:*
-• "What are today's rates?"
-• "100 USD to EUR"
-• "Convert 500 GBP to USD"
-• "EUR rates"
-
-💬 Just type your message and I'll help you with FX trading information!
-        """
+        """Enhanced help command with financial features"""
+        user = update.effective_user
+        chat_type = update.message.chat.type if update.message and update.message.chat else 'private'
         
+        if chat_type == 'private':
+            help_text = f"""
+🤖 **Hi {user.first_name if user else 'there'}! EVA Fx Assistant Help**
+
+**📊 Market & Trading Commands:**
+• `/rates` - Live exchange rates with conversion tools
+• `/news` - Latest financial news & market updates  
+• `/market` - Comprehensive market analysis
+• `/gold` - Gold & precious metals analysis
+• `/insights` - AI-powered trading insights
+• `/convert` - Currency conversion calculator
+
+**🚀 Quick Commands:**
+• `/start` - Welcome & quick actions
+• `/help` - This help message
+
+**💬 Natural Language:**
+Just type naturally! I understand:
+• "What are USD rates today?"
+• "100 USD to XAF" 
+• "What's happening in the markets?"
+• "Gold price analysis"
+• "Current financial news"
+
+**🎯 Key Features:**
+📈 Real-time market data & FX rates
+📰 Live financial news analysis  
+🤖 AI-powered market insights
+💱 Instant currency conversions
+🥇 Gold & commodities tracking
+📊 Market sentiment analysis
+
+**🌐 Links & Contact:**
+• Website: whatsapp-bot-96xm.onrender.com
+• Channel: t.me/+dKTLjP_OHeA3MDE0
+
+*I'm here 24/7 to help with your FX and trading needs!* ✨
+            """.strip()
+        else:
+            help_text = f"""
+🤖 **Group Help - EVA Fx Assistant**
+
+**📊 Market Commands (Everyone):**
+• `/rates` - Live FX rates (group format)
+• `/news` - Latest financial headlines
+• `/market` - Current market analysis  
+• `/gold` - Gold market insights
+• `/insights` - Trading analysis & tips
+• `/convert` - Currency conversions
+
+**👥 Group Management (Admin):**  
+• `/enabledaily` - Daily 10 AM rate broadcasts
+• `/disabledaily` - Stop daily broadcasts
+
+**💬 Smart Features:**
+• Type currency names for quick info
+• Mention @{context.bot.username if context.bot else 'evafx_assistant_bot'} for AI help
+• Interactive buttons for easy access
+• Real-time financial news integration
+
+**🛡️ Content Guidelines:**
+✅ FX trading & market discussions
+✅ Rate inquiries & analysis requests
+✅ Professional trading conversations  
+❌ Spam or inappropriate content
+❌ Off-topic discussions
+
+*Keep discussions FX-focused and professional!* 🚀
+            """.strip()
+            
         await update.message.reply_text(help_text, parse_mode='Markdown')
-        logger.info(f"Help command sent to user {update.effective_user.id}")
+        logger.info(f"Enhanced help sent to {chat_type} chat - user {user.id if user else 'unknown'}")
 
     async def rates_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /rates command - works in both private and group chats"""
@@ -354,6 +424,286 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Conversion calculation error: {e}")
             await update.message.reply_text("❌ Sorry, I couldn't perform the conversion. Please try again.")
+
+    async def news_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Get latest financial news"""
+        user = update.effective_user
+        chat_type = update.message.chat.type if update.message and update.message.chat else 'private'
+        
+        try:
+            # Show loading message
+            loading_msg = await update.message.reply_text("📰 Getting latest financial news... ⏳")
+            
+            # Get fresh financial news
+            news_items = self.financial_analyzer.get_latest_financial_news(limit=6)
+            
+            if not news_items:
+                await loading_msg.edit_text("❌ Unable to fetch financial news at this time. Please try again later.")
+                return
+                
+            # Format news for display
+            news_message = f"📰 **Latest Financial News**\n"
+            news_message += f"🕒 Updated: {datetime.now().strftime('%H:%M %Z')}\n\n"
+            
+            for i, news in enumerate(news_items[:5], 1):
+                title = news['title'][:80] + "..." if len(news['title']) > 80 else news['title']
+                source = news.get('source', 'Unknown')
+                news_message += f"**{i}. {title}**\n"
+                news_message += f"📊 Source: {source}\n\n"
+                
+            # Add market impact analysis button for detailed view
+            keyboard = [
+                [
+                    InlineKeyboardButton("📊 Market Impact", callback_data="news_impact"),
+                    InlineKeyboardButton("🔄 Refresh News", callback_data="news_refresh")
+                ],
+                [
+                    InlineKeyboardButton("💡 Trading Insights", callback_data="trading_insights"),
+                    InlineKeyboardButton("📈 Market Analysis", callback_data="market_analysis")
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            # Personalize message
+            if chat_type == 'private':
+                greeting = f"Hi {user.first_name if user else 'there'}! 👋\n\n"
+                news_message = greeting + news_message
+                
+            await loading_msg.edit_text(news_message, reply_markup=reply_markup, parse_mode='Markdown')
+            
+            logger.info(f"Financial news sent to {chat_type} chat - user {user.id if user else 'unknown'}")
+            
+        except Exception as e:
+            logger.error(f"Error in news_command: {e}")
+            try:
+                await loading_msg.edit_text("❌ Sorry, couldn't fetch financial news right now. Please try again later.")
+            except:
+                await update.message.reply_text("❌ Sorry, couldn't fetch financial news right now. Please try again later.")
+
+    async def market_analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Get comprehensive market analysis"""
+        user = update.effective_user
+        chat_type = update.message.chat.type if update.message and update.message.chat else 'private'
+        
+        try:
+            # Show loading message
+            loading_msg = await update.message.reply_text("📊 Analyzing current market conditions... ⏳")
+            
+            # Get market analysis
+            currency_analysis = self.financial_analyzer.get_currency_analysis()
+            commodities_analysis = self.financial_analyzer.get_commodities_analysis()
+            
+            if not currency_analysis and not commodities_analysis:
+                await loading_msg.edit_text("❌ Unable to fetch market data at this time. Please try again later.")
+                return
+                
+            # Format analysis message
+            analysis_message = f"📊 **Market Analysis Overview**\n"
+            analysis_message += f"🕒 Updated: {datetime.now().strftime('%H:%M %Z')}\n\n"
+            
+            # Dollar Index
+            if currency_analysis.get('dollar_index'):
+                dxy = currency_analysis['dollar_index']
+                change_emoji = "🟢" if dxy.get('change_percent', 0) > 0 else "🔴" if dxy.get('change_percent', 0) < 0 else "⚪"
+                analysis_message += f"💵 **US Dollar Index (DXY)**\n"
+                analysis_message += f"{change_emoji} {dxy.get('price', 'N/A')} ({dxy.get('change_percent', 0):+.2f}%)\n\n"
+            
+            # Major FX Pairs
+            fx_pairs = currency_analysis.get('fx_pairs', {})
+            if fx_pairs:
+                analysis_message += f"💱 **Major FX Pairs:**\n"
+                for pair, data in list(fx_pairs.items())[:4]:
+                    change_pct = data.get('change_percent', 0)
+                    change_emoji = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
+                    analysis_message += f"{change_emoji} **{pair}**: {data.get('price', 'N/A')} ({change_pct:+.2f}%)\n"
+                analysis_message += "\n"
+            
+            # Commodities
+            commodities = commodities_analysis.get('commodities', {})
+            if commodities:
+                analysis_message += f"🥇 **Key Commodities:**\n"
+                for commodity, data in commodities.items():
+                    change_pct = data.get('change_percent', 0)
+                    change_emoji = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
+                    price = data.get('price', 'N/A')
+                    if commodity == 'Gold':
+                        analysis_message += f"{change_emoji} **Gold**: ${price} ({change_pct:+.2f}%)\n"
+                    elif commodity == 'Oil_WTI':
+                        analysis_message += f"{change_emoji} **WTI Oil**: ${price} ({change_pct:+.2f}%)\n"
+                    else:
+                        analysis_message += f"{change_emoji} **{commodity}**: ${price} ({change_pct:+.2f}%)\n"
+            
+            # Analysis summary
+            summary = currency_analysis.get('analysis_summary', 'Mixed market signals')
+            analysis_message += f"\n📈 **Summary**: {summary}\n"
+            
+            # Add disclaimer
+            analysis_message += f"\n⚠️ *Live market data - Not financial advice*"
+            
+            # Create action buttons
+            keyboard = [
+                [
+                    InlineKeyboardButton("💡 Trading Insights", callback_data="trading_insights"),
+                    InlineKeyboardButton("📰 Latest News", callback_data="financial_news")
+                ],
+                [
+                    InlineKeyboardButton("🥇 Gold Analysis", callback_data="gold_analysis"),
+                    InlineKeyboardButton("🔄 Refresh Data", callback_data="market_refresh")
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            # Personalize message
+            if chat_type == 'private' and user:
+                greeting = f"Hi {user.first_name}! Here's your market analysis:\n\n"
+                analysis_message = greeting + analysis_message
+                
+            await loading_msg.edit_text(analysis_message, reply_markup=reply_markup, parse_mode='Markdown')
+            
+            logger.info(f"Market analysis sent to {chat_type} chat - user {user.id if user else 'unknown'}")
+            
+        except Exception as e:
+            logger.error(f"Error in market_analysis_command: {e}")
+            try:
+                await loading_msg.edit_text("❌ Sorry, couldn't fetch market analysis right now. Please try again later.")
+            except:
+                await update.message.reply_text("❌ Sorry, couldn't fetch market analysis right now. Please try again later.")
+
+    async def gold_analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Get specific gold market analysis"""
+        user = update.effective_user
+        
+        try:
+            # Show loading message
+            loading_msg = await update.message.reply_text("🥇 Analyzing gold market... ⏳")
+            
+            # Get gold-specific data
+            gold_data = self.financial_analyzer.get_market_data(['Gold', 'Silver'])
+            currency_analysis = self.financial_analyzer.get_currency_analysis()
+            news_items = self.financial_analyzer.get_latest_financial_news(limit=10)
+            news_impact = self.financial_analyzer.analyze_news_impact(news_items)
+            
+            # Format gold analysis
+            gold_message = f"🥇 **Gold Market Analysis**\n"
+            gold_message += f"🕒 Updated: {datetime.now().strftime('%H:%M %Z')}\n\n"
+            
+            if gold_data.get('Gold'):
+                gold = gold_data['Gold']
+                change_pct = gold.get('change_percent', 0)
+                change_emoji = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
+                gold_message += f"💰 **Current Gold Price**\n"
+                gold_message += f"{change_emoji} ${gold.get('price', 'N/A')}/oz ({change_pct:+.2f}%)\n\n"
+                
+            # Silver comparison
+            if gold_data.get('Silver'):
+                silver = gold_data['Silver']
+                silver_change = silver.get('change_percent', 0)
+                silver_emoji = "🟢" if silver_change > 0 else "🔴" if silver_change < 0 else "⚪"
+                gold_message += f"🥈 **Silver**: ${silver.get('price', 'N/A')} ({silver_change:+.2f}%)\n"
+                
+            # USD strength impact
+            if currency_analysis.get('dollar_index'):
+                dxy = currency_analysis['dollar_index']
+                dxy_change = dxy.get('change_percent', 0)
+                correlation = "inverse correlation" if dxy_change != 0 else "neutral"
+                gold_message += f"\n💵 **USD Impact**: DXY {dxy.get('price', 'N/A')} ({dxy_change:+.2f}%)\n"
+                gold_message += f"📊 Gold typically shows {correlation} with USD strength\n"
+                
+            # News impact
+            gold_relevant_news = news_impact.get('gold_relevant', [])
+            if gold_relevant_news:
+                gold_message += f"\n📰 **News Impact**: {len(gold_relevant_news)} gold-related headlines detected\n"
+                gold_message += f"Recent developments may affect precious metals pricing\n"
+                
+            # Market sentiment
+            sentiment = news_impact.get('overall_sentiment', 'neutral')
+            sentiment_emoji = "😊" if sentiment == 'positive' else "😟" if sentiment == 'negative' else "😐"
+            gold_message += f"\n{sentiment_emoji} **Market Sentiment**: {sentiment.title()}\n"
+            
+            # Trading considerations
+            gold_message += f"\n💡 **Trading Considerations**:\n"
+            if abs(gold_data.get('Gold', {}).get('change_percent', 0)) > 1.0:
+                gold_message += f"• Significant price movement detected - monitor volatility\n"
+            gold_message += f"• Consider USD strength and inflation data\n"
+            gold_message += f"• Watch for geopolitical developments\n"
+            
+            # Disclaimer
+            gold_message += f"\n⚠️ *Analysis based on current data - Not investment advice*"
+            
+            # Create buttons
+            keyboard = [
+                [
+                    InlineKeyboardButton("📊 Full Market", callback_data="market_analysis"),
+                    InlineKeyboardButton("💱 FX Impact", callback_data="fx_gold_correlation")
+                ],
+                [
+                    InlineKeyboardButton("📰 Gold News", callback_data="gold_news"),
+                    InlineKeyboardButton("🔄 Refresh", callback_data="gold_refresh")
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await loading_msg.edit_text(gold_message, reply_markup=reply_markup, parse_mode='Markdown')
+            
+            logger.info(f"Gold analysis sent to user {user.id if user else 'unknown'}")
+            
+        except Exception as e:
+            logger.error(f"Error in gold_analysis_command: {e}")
+            try:
+                await loading_msg.edit_text("❌ Sorry, couldn't fetch gold analysis right now. Please try again later.")
+            except:
+                await update.message.reply_text("❌ Sorry, couldn't fetch gold analysis right now. Please try again later.")
+
+    async def trading_insights_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Get comprehensive trading insights with market context"""
+        user = update.effective_user
+        chat_type = update.message.chat.type if update.message and update.message.chat else 'private'
+        
+        try:
+            # Show loading message
+            loading_msg = await update.message.reply_text("💡 Generating trading insights... ⏳")
+            
+            # Get user's query from command arguments
+            user_query = " ".join(context.args) if context.args else ""
+            
+            # Generate comprehensive insights
+            insights = self.financial_analyzer.get_trading_insights(user_query)
+            
+            if not insights or len(insights) < 50:
+                await loading_msg.edit_text("❌ Unable to generate trading insights at this time. Please try again later.")
+                return
+                
+            # Personalize the insights
+            if chat_type == 'private' and user:
+                personal_intro = f"Hi {user.first_name}! Here are your personalized trading insights:\n\n"
+                insights = personal_intro + insights
+            elif chat_type in ['group', 'supergroup']:
+                group_intro = f"📊 **Trading Insights for the Group**\n\n"
+                insights = group_intro + insights
+                
+            # Create action buttons
+            keyboard = [
+                [
+                    InlineKeyboardButton("📰 Latest News", callback_data="financial_news"),
+                    InlineKeyboardButton("📊 Market Data", callback_data="market_analysis")
+                ],
+                [
+                    InlineKeyboardButton("🥇 Gold Analysis", callback_data="gold_analysis"),
+                    InlineKeyboardButton("💱 FX Rates", callback_data="rates")
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await loading_msg.edit_text(insights, reply_markup=reply_markup, parse_mode='Markdown')
+            
+            logger.info(f"Trading insights sent to {chat_type} chat - user {user.id if user else 'unknown'} - query: '{user_query}'")
+            
+        except Exception as e:
+            logger.error(f"Error in trading_insights_command: {e}")
+            try:
+                await loading_msg.edit_text("❌ Sorry, couldn't generate trading insights right now. Please try again later.")
+            except:
+                await update.message.reply_text("❌ Sorry, couldn't generate trading insights right now. Please try again later.")
 
     async def group_help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /grouphelp command - show group-specific help"""

@@ -426,8 +426,54 @@ Rates: 1 EUR = {self.base_rates['XAF_EUR']:,} XAF | {self.base_rates['XOF_EUR']:
 📅 Updated: {self.base_rates['last_updated']}
 ⚠️ *Premium exchange rates by EVA Fx*
                 """.strip()
+            elif currency == 'XAF':
+                usd_amount = amount / self.base_rates['XAF_USD']
+                usdt_amount = amount / self.base_rates['XAF_USDT']
+                aed_amount = amount / self.base_rates['XAF_AED']
+                cny_amount = amount / self.base_rates['XAF_CNY']
+                eur_amount = amount / self.base_rates['XAF_EUR']
+                greeting = self.get_greeting_and_disclaimer()
+                return f"""
+{greeting}💱 **EVA FX CALCULATION**
+
+**{amount:,} XAF → {usd_amount:.2f} USD**
+**{amount:,} XAF → {usdt_amount:.2f} USDT**
+**{amount:,} XAF → {aed_amount:.2f} AED**
+**{amount:,} XAF → {cny_amount:.2f} CNY**
+**{amount:,} XAF → {eur_amount:.2f} EUR**
+
+Selling rates (XAF to foreign currency)
+*Service fee included in rates*
+
+🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/
+📅 Updated: {self.base_rates['last_updated']}
+⚠️ *Premium exchange rates by EVA Fx*
+                """.strip()
+            elif currency == 'XOF':
+                usd_amount = amount / self.base_rates['XOF_USD']
+                usdt_amount = amount / self.base_rates['XOF_USDT']
+                aed_amount = amount / self.base_rates['XOF_AED']
+                cny_amount = amount / self.base_rates['XOF_CNY']
+                eur_amount = amount / self.base_rates['XOF_EUR']
+                greeting = self.get_greeting_and_disclaimer()
+                return f"""
+{greeting}💱 **EVA FX CALCULATION**
+
+**{amount:,} XOF → {usd_amount:.2f} USD**
+**{amount:,} XOF → {usdt_amount:.2f} USDT**
+**{amount:,} XOF → {aed_amount:.2f} AED**
+**{amount:,} XOF → {cny_amount:.2f} CNY**
+**{amount:,} XOF → {eur_amount:.2f} EUR**
+
+Selling rates (XOF to foreign currency)
+*Service fee included in rates*
+
+🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/
+📅 Updated: {self.base_rates['last_updated']}
+⚠️ *Premium exchange rates by EVA Fx*
+                """.strip()
             else:
-                return f"❌ Currency '{currency}' not supported. Available: USD, USDT, AED, CNY, EUR\n\n🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/"
+                return f"❌ Currency '{currency}' not supported. Available: USD, USDT, AED, CNY, EUR, XAF, XOF\n\n🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/"
                 
         except ValueError:
             return "❌ Invalid amount. Please enter a number (e.g., '100 USD')\n\n🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/"
@@ -489,6 +535,52 @@ Rates: 1 EUR = {self.base_rates['XAF_EUR']:,} XAF | {self.base_rates['XOF_EUR']:
                 elif target_currency == 'XOF':
                     converted_amount = amount * self.base_rates['XOF_EUR']
                     rate = self.base_rates['XOF_EUR']
+                else:
+                    return "❌ Target currency not supported"
+            elif currency == 'XAF':
+                if target_currency == 'USD':
+                    converted_amount = amount / self.base_rates['XAF_USD']
+                    rate = 1 / self.base_rates['XAF_USD']
+                elif target_currency in ['USDT', 'TETHER']:
+                    converted_amount = amount / self.base_rates['XAF_USDT']
+                    rate = 1 / self.base_rates['XAF_USDT']
+                elif target_currency == 'AED':
+                    converted_amount = amount / self.base_rates['XAF_AED']
+                    rate = 1 / self.base_rates['XAF_AED']
+                elif target_currency in ['CNY', 'RMB', 'YUAN']:
+                    converted_amount = amount / self.base_rates['XAF_CNY']
+                    rate = 1 / self.base_rates['XAF_CNY']
+                elif target_currency == 'EUR':
+                    converted_amount = amount / self.base_rates['XAF_EUR']
+                    rate = 1 / self.base_rates['XAF_EUR']
+                elif target_currency == 'XOF':
+                    # XAF to XOF conversion (both are similar but with different rates)
+                    xaf_to_usd = amount / self.base_rates['XAF_USD']
+                    converted_amount = xaf_to_usd * self.base_rates['XOF_USD']
+                    rate = self.base_rates['XOF_USD'] / self.base_rates['XAF_USD']
+                else:
+                    return "❌ Target currency not supported"
+            elif currency == 'XOF':
+                if target_currency == 'USD':
+                    converted_amount = amount / self.base_rates['XOF_USD']
+                    rate = 1 / self.base_rates['XOF_USD']
+                elif target_currency in ['USDT', 'TETHER']:
+                    converted_amount = amount / self.base_rates['XOF_USDT']
+                    rate = 1 / self.base_rates['XOF_USDT']
+                elif target_currency == 'AED':
+                    converted_amount = amount / self.base_rates['XOF_AED']
+                    rate = 1 / self.base_rates['XOF_AED']
+                elif target_currency in ['CNY', 'RMB', 'YUAN']:
+                    converted_amount = amount / self.base_rates['XOF_CNY']
+                    rate = 1 / self.base_rates['XOF_CNY']
+                elif target_currency == 'EUR':
+                    converted_amount = amount / self.base_rates['XOF_EUR']
+                    rate = 1 / self.base_rates['XOF_EUR']
+                elif target_currency == 'XAF':
+                    # XOF to XAF conversion
+                    xof_to_usd = amount / self.base_rates['XOF_USD']
+                    converted_amount = xof_to_usd * self.base_rates['XAF_USD']
+                    rate = self.base_rates['XAF_USD'] / self.base_rates['XOF_USD']
                 else:
                     return "❌ Target currency not supported"
             else:

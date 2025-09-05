@@ -19,6 +19,7 @@ from openai.types.chat import ChatCompletion
 import pytz
 from dotenv import load_dotenv
 from fx_trader import fx_trader
+from financial_news import FinancialNewsAnalyzer
 from enhanced_scheduler import initialize_enhanced_scheduler, enhanced_scheduler
 from external_keepalive import external_keep_alive, print_setup_instructions
 
@@ -336,6 +337,14 @@ try:
 except Exception as e:
     logger.critical(f"Failed to initialize OpenAI client: {e}")
     raise
+
+# Initialize Financial News Analyzer
+try:
+    financial_analyzer = FinancialNewsAnalyzer()
+    logger.info("Financial News Analyzer initialized successfully")
+except Exception as e:
+    logger.warning(f"Failed to initialize Financial News Analyzer: {e}")
+    financial_analyzer = None
 
 # Custom exceptions for better error handling
 class MemoryError(Exception):
@@ -1261,7 +1270,7 @@ def generate_ai_response_with_action_parsing(
 
 def handle_fx_commands(message: str) -> Optional[str]:
     """
-    Handle FX trading related commands and queries
+    Handle FX trading related commands and queries including financial news
     
     Args:
         message: The incoming message to analyze
@@ -1270,6 +1279,107 @@ def handle_fx_commands(message: str) -> Optional[str]:
         FX response string if message is FX-related, None otherwise
     """
     message_lower = message.lower().strip()
+    
+    # Handle financial news requests
+    if any(keyword in message_lower for keyword in ['financial news', 'market news', 'news', 'latest news']):
+        if financial_analyzer:
+            try:
+                news_data = financial_analyzer.get_latest_financial_news(limit=5)
+                if news_data:
+                    response = "📰 **LATEST FINANCIAL NEWS**\n\n"
+                    for idx, article in enumerate(news_data[:5], 1):
+                        response += f"**{idx}. {article.get('title', 'No title')}**\n"
+                        response += f"📅 {article.get('published', 'No date')}\n"
+                        response += f"🔗 Source: {article.get('source', 'Unknown')}\n\n"
+                    response += "💡 **Want more?** Ask for 'market analysis' or 'trading insights'"
+                    return response
+                else:
+                    return "📰 No financial news available at the moment. Please try again later."
+            except Exception as e:
+                logger.error(f"Error fetching financial news: {e}")
+                return "❌ Unable to fetch financial news right now. Please try again later."
+        else:
+            return "📰 Financial news service is currently unavailable."
+    
+    # Handle market analysis requests
+    if any(keyword in message_lower for keyword in ['market analysis', 'market data', 'market overview', 'market summary']):
+        if financial_analyzer:
+            try:
+                market_data = financial_analyzer.get_market_data()
+                if market_data:
+                    response = "📊 **MARKET ANALYSIS**\n\n"
+                    
+                    # Add major indices if available
+                    if 'indices' in market_data:
+                        response += "**📈 Major Indices:**\n"
+                        for symbol, data in market_data['indices'].items():
+                            change = data.get('change', 0)
+                            change_percent = data.get('change_percent', 0)
+                            trend = "📈" if change >= 0 else "📉"
+                            response += f"{trend} {symbol}: ${data.get('price', 'N/A')} ({change_percent:+.2f}%)\n"
+                        response += "\n"
+                    
+                    # Add currency info if available
+                    if 'currencies' in market_data:
+                        response += "**💱 Major Currencies:**\n"
+                        for pair, rate in market_data['currencies'].items():
+                            response += f"• {pair}: {rate}\n"
+                        response += "\n"
+                    
+                    response += "💡 **Want specific insights?** Ask for 'trading insights' or 'gold prices'"
+                    return response
+                else:
+                    return "📊 Market data not available at the moment. Please try again later."
+            except Exception as e:
+                logger.error(f"Error fetching market analysis: {e}")
+                return "❌ Unable to fetch market analysis right now. Please try again later."
+        else:
+            return "📊 Market analysis service is currently unavailable."
+    
+    # Handle gold/commodities requests
+    if any(keyword in message_lower for keyword in ['gold', 'gold price', 'gold prices', 'commodities', 'precious metals']):
+        if financial_analyzer:
+            try:
+                gold_data = financial_analyzer.get_commodities_analysis()
+                if gold_data:
+                    response = "🥇 **GOLD & COMMODITIES ANALYSIS**\n\n"
+                    
+                    if 'gold' in gold_data:
+                        gold_info = gold_data['gold']
+                        response += f"**💰 Gold (XAU/USD):** ${gold_info.get('price', 'N/A')}/oz\n"
+                        change = gold_info.get('change', 0)
+                        trend = "📈" if change >= 0 else "📉"
+                        response += f"{trend} Change: {change:+.2f} ({gold_info.get('change_percent', 0):+.2f}%)\n\n"
+                    
+                    if 'silver' in gold_data:
+                        silver_info = gold_data['silver']
+                        response += f"**🥈 Silver:** ${silver_info.get('price', 'N/A')}/oz\n"
+                        response += f"Change: {silver_info.get('change', 0):+.2f} ({silver_info.get('change_percent', 0):+.2f}%)\n\n"
+                    
+                    response += "💡 **Want trading advice?** Ask for 'trading insights'"
+                    return response
+                else:
+                    return "🥇 Gold market data not available at the moment. Please try again later."
+            except Exception as e:
+                logger.error(f"Error fetching gold analysis: {e}")
+                return "❌ Unable to fetch gold data right now. Please try again later."
+        else:
+            return "🥇 Gold analysis service is currently unavailable."
+    
+    # Handle trading insights requests
+    if any(keyword in message_lower for keyword in ['trading insights', 'insights', 'trading advice', 'market insights']):
+        if financial_analyzer:
+            try:
+                insights = financial_analyzer.get_trading_insights()
+                if insights:
+                    return f"💡 **TRADING INSIGHTS**\n\n{insights}\n\n⚠️ **Disclaimer:** This is AI-generated analysis. Always verify before making trading decisions."
+                else:
+                    return "💡 Trading insights not available at the moment. Please try again later."
+            except Exception as e:
+                logger.error(f"Error fetching trading insights: {e}")
+                return "❌ Unable to generate trading insights right now. Please try again later."
+        else:
+            return "💡 Trading insights service is currently unavailable."
     
     # Check for rate requests - improved detection
     if any(keyword in message_lower for keyword in ['rate', 'rates']):
@@ -1764,6 +1874,103 @@ def health_check() -> Dict:
         }
         
         return jsonify(status), 500
+
+# Financial News API Routes
+@app.route('/api/financial-news', methods=['GET'])
+@limiter.limit("10 per minute")
+def get_financial_news():
+    """Get latest financial news"""
+    try:
+        if not financial_analyzer:
+            return jsonify({
+                'error': 'Financial news service not available',
+                'status': 'service_unavailable'
+            }), 503
+        
+        news_data = financial_analyzer.get_latest_financial_news()
+        return jsonify({
+            'status': 'success',
+            'data': news_data,
+            'timestamp': datetime.now(pytz.utc).isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Financial news API error: {e}")
+        return jsonify({
+            'error': 'Failed to fetch financial news',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/market-analysis', methods=['GET'])
+@limiter.limit("10 per minute")  
+def get_market_analysis():
+    """Get comprehensive market analysis"""
+    try:
+        if not financial_analyzer:
+            return jsonify({
+                'error': 'Market analysis service not available',
+                'status': 'service_unavailable'
+            }), 503
+        
+        market_data = financial_analyzer.get_market_data()
+        return jsonify({
+            'status': 'success',
+            'data': market_data,
+            'timestamp': datetime.now(pytz.utc).isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Market analysis API error: {e}")
+        return jsonify({
+            'error': 'Failed to fetch market analysis',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/trading-insights', methods=['GET'])
+@limiter.limit("5 per minute")
+def get_trading_insights():
+    """Get AI-powered trading insights"""
+    try:
+        if not financial_analyzer:
+            return jsonify({
+                'error': 'Trading insights service not available',
+                'status': 'service_unavailable'
+            }), 503
+        
+        insights = financial_analyzer.get_trading_insights()
+        return jsonify({
+            'status': 'success',
+            'data': insights,
+            'timestamp': datetime.now(pytz.utc).isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Trading insights API error: {e}")
+        return jsonify({
+            'error': 'Failed to fetch trading insights',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/gold-analysis', methods=['GET'])  
+@limiter.limit("10 per minute")
+def get_gold_analysis():
+    """Get gold and precious metals analysis"""
+    try:
+        if not financial_analyzer:
+            return jsonify({
+                'error': 'Gold analysis service not available', 
+                'status': 'service_unavailable'
+            }), 503
+        
+        gold_data = financial_analyzer.get_commodities_analysis()
+        return jsonify({
+            'status': 'success',
+            'data': gold_data,
+            'timestamp': datetime.now(pytz.utc).isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Gold analysis API error: {e}")
+        return jsonify({
+            'error': 'Failed to fetch gold analysis',
+            'status': 'error'
+        }), 500
 
 @app.route('/', methods=['GET'])
 def home():
