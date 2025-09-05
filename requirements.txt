@@ -9,5 +9,5 @@ python-dotenv
 requests
 schedule
 python-telegram-bot[all]
-yfinance
-feedparser
+yfinance==0.2.18
+feedparser==6.0.10
