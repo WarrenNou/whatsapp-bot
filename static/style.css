@@ -281,10 +281,9 @@ body {
     padding: 15px 20px;
     background: white;
     border-top: 1px solid #e2e8f0;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
-    overflow-x: auto;
-    flex-wrap: wrap;
     align-items: center;
 }
 
@@ -500,135 +499,317 @@ body {
 /* Mobile Responsive Design */
 @media (max-width: 768px) {
     body {
-        padding: 10px;
+        padding: 5px;
     }
     
     .chat-container {
-        height: 95vh;
-        border-radius: 15px;
+        height: 98vh;
+        border-radius: 12px;
     }
     
     .chat-header {
-        padding: 15px;
+        padding: 12px 15px;
     }
     
     .header-content {
-        gap: 15px;
-    }
-    
-    .header-right {
         gap: 10px;
     }
     
+    .logo-icon {
+        font-size: 1.6em;
+        padding: 10px;
+    }
+    
+    .header-text h1 {
+        font-size: 1.4em;
+        margin-bottom: 2px;
+    }
+    
+    .header-text p {
+        font-size: 0.75em;
+    }
+    
+    .header-right {
+        gap: 8px;
+    }
+    
     .social-links {
-        gap: 6px;
+        gap: 4px;
     }
     
     .telegram-link, .telegram-bot-link {
-        font-size: 0.75em;
-        padding: 5px 8px;
+        font-size: 0.7em;
+        padding: 4px 8px;
+        border-radius: 12px;
     }
     
     .telegram-link span, .telegram-bot-link span {
         display: none;
     }
     
-    .logo-icon {
-        font-size: 2em;
-        padding: 12px;
+    .status-indicator {
+        font-size: 0.75em;
     }
     
     .message {
-        max-width: 95%;
+        max-width: 90%;
+        margin: 8px 0;
     }
     
-    .quick-actions {
-        padding: 12px 15px;
-        gap: 6px;
+    .message-content {
+        font-size: 0.85em;
+        padding: 12px;
     }
     
-    .quick-btn {
-        font-size: 0.75em;
-        padding: 6px 10px;
+    .welcome-message h3 {
+        font-size: 1.1em;
+        margin-bottom: 8px;
     }
     
-    .telegram-quick-actions {
-        margin-left: 0;
-        margin-top: 8px;
-        width: 100%;
-        justify-content: center;
+    .welcome-message p {
+        font-size: 0.8em;
+        line-height: 1.4;
+        margin-bottom: 8px;
+    }
+    
+    .welcome-message ul {
+        font-size: 0.8em;
+        margin: 8px 0;
+        padding-left: 16px;
+    }
+    
+    .welcome-message ul li {
+        margin-bottom: 3px;
+    }
+    
+    .telegram-links-welcome {
+        margin-top: 10px;
+        padding: 10px;
+    }
+    
+    .telegram-links-welcome p {
+        font-size: 0.8em;
+        margin-bottom: 6px;
     }
     
     .telegram-options {
         justify-content: center;
+        gap: 8px;
     }
     
     .telegram-welcome-link, .telegram-bot-welcome-link {
-        font-size: 0.8em;
+        font-size: 0.75em;
         padding: 6px 10px;
+        border-radius: 12px;
+    }
+    
+    .quick-actions {
+        padding: 10px 12px;
+        gap: 6px;
+    }
+    
+    .quick-btn {
+        font-size: 0.7em;
+        padding: 6px 10px;
+        border-radius: 15px;
+    }
+    
+    .telegram-quick-actions {
+        margin-left: 0;
+        margin-top: 6px;
+        width: 100%;
+        justify-content: center;
+        gap: 6px;
+    }
+    
+    .chat-input-wrapper {
+        padding: 10px 12px;
+    }
+    
+    .chat-input-wrapper input {
+        font-size: 0.85em;
+        padding: 10px 12px;
+    }
+    
+    .chat-input-wrapper button {
+        width: 36px;
+        height: 36px;
     }
 }
 
 @media (max-width: 480px) {
+    body {
+        padding: 2px;
+    }
+    
+    .chat-container {
+        height: 99vh;
+        border-radius: 8px;
+    }
+    
     .header-content {
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
         text-align: center;
     }
     
+    .logo-section {
+        gap: 10px;
+    }
+    
+    .logo-icon {
+        font-size: 1.4em;
+        padding: 8px;
+    }
+    
+    .header-text h1 {
+        font-size: 1.2em;
+        margin-bottom: 1px;
+    }
+    
+    .header-text p {
+        font-size: 0.7em;
+    }
+    
     .header-right {
-        flex-direction: column;
-        gap: 8px;
+        flex-direction: row;
+        gap: 6px;
+        justify-content: center;
+        align-items: center;
     }
     
     .social-links {
         justify-content: center;
+        gap: 4px;
+    }
+    
+    .telegram-link, .telegram-bot-link {
+        font-size: 0.65em;
+        padding: 3px 6px;
+        border-radius: 10px;
+    }
+    
+    .status-indicator {
+        font-size: 0.7em;
+    }
+    
+    .message-content {
+        font-size: 0.8em;
+        padding: 10px;
+    }
+    
+    .welcome-message h3 {
+        font-size: 1em;
+        margin-bottom: 6px;
+    }
+    
+    .welcome-message p {
+        font-size: 0.75em;
+        line-height: 1.3;
+        margin-bottom: 6px;
+    }
+    
+    .welcome-message ul {
+        font-size: 0.75em;
+        margin: 6px 0;
+        padding-left: 14px;
+    }
+    
+    .welcome-message ul li {
+        margin-bottom: 2px;
+    }
+    
+    .telegram-links-welcome {
+        margin-top: 8px;
+        padding: 8px;
+    }
+    
+    .telegram-links-welcome p {
+        font-size: 0.75em;
+        margin-bottom: 4px;
+    }
+    
+    .telegram-welcome-link, .telegram-bot-welcome-link {
+        font-size: 0.7em;
+        padding: 5px 8px;
+        border-radius: 10px;
+        justify-content: center;
+        text-align: center;
+    }
+    
+    .telegram-options {
+        flex-direction: column;
+        gap: 6px;
     }
     
     .quick-actions {
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         align-items: stretch;
+        padding: 8px 10px;
+        gap: 4px;
     }
     
     .quick-btn {
         justify-content: center;
-        margin-bottom: 4px;
+        font-size: 0.7em;
+        padding: 8px 12px;
+        margin-bottom: 2px;
+        border-radius: 12px;
     }
     
     .telegram-quick-actions {
         display: flex;
-        gap: 8px;
-        margin-top: 8px;
+        flex-direction: row;
+        gap: 6px;
+        margin-top: 6px;
         justify-content: space-between;
     }
     
     .telegram-quick-btn, .telegram-bot-quick-btn {
         flex: 1;
         justify-content: center;
+        font-size: 0.65em;
+        padding: 6px 8px;
     }
     
     .message-avatar {
-        width: 35px;
-        height: 35px;
-        margin: 0 8px;
+        width: 30px;
+        height: 30px;
+        margin: 0 6px;
+    }
+    
+    .message-avatar i {
+        font-size: 0.9em;
     }
     
     .chat-input-wrapper {
-        padding: 0 10px;
+        padding: 8px 10px;
     }
     
-    .telegram-links-welcome {
-        padding: 10px;
+    .chat-input-wrapper input {
+        font-size: 0.8em;
+        padding: 8px 10px;
+        border-radius: 18px;
     }
     
-    .telegram-options {
-        flex-direction: column;
-        gap: 8px;
+    .chat-input-wrapper button {
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
     }
     
-    .telegram-welcome-link, .telegram-bot-welcome-link {
-        justify-content: center;
-        text-align: center;
+    .chat-input-wrapper button i {
+        font-size: 0.8em;
+    }
+    
+    .message-time {
+        font-size: 0.65em;
+    }
+    
+    .typing-indicator {
+        font-size: 0.7em;
+        padding: 4px 8px;
     }
 }
 

@@ -260,16 +260,7 @@ class FXTrader:
 • 1 CNY = {self.base_rates['XAF_CNY']:,} XAF | {self.base_rates['XOF_CNY']:,} XOF
 • 1 EUR = {self.base_rates['XAF_EUR']:,} XAF | {self.base_rates['XOF_EUR']:,} XOF
 
-📊 **Rate Details:**
-• USD/USDT: Premium rates with service fee included
-• AED: Competitive Middle East rates
-• CNY: China market rates (9.5% XAF | 5% XOF markup)
-• EUR: European market rates (6% XAF | 4% XOF markup)
-• XOF rates: Better markup for West Africa
-• Based on live international market data
-• Updated in real-time
-
-💰 **Quick Calculate:**
+ **Quick Calculate:**
 Reply: "100 USD", "500 CNY", "200 EUR" or "1000 XOF"
 
 🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/

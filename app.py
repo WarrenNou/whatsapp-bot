@@ -1769,13 +1769,15 @@ def health_check() -> Dict:
 def home():
     """Home page with chat interface"""
     from flask import render_template
-    return render_template('index.html')
+    import time
+    return render_template('index.html', timestamp=int(time.time()))
 
 @app.route('/chat', methods=['GET'])
 def chat_page():
     """Alternative chat page route"""
     from flask import render_template
-    return render_template('index.html')
+    import time
+    return render_template('index.html', timestamp=int(time.time()))
 
 @app.route('/ping', methods=['GET'])
 @limiter.exempt

@@ -124,14 +124,25 @@ class ChatBot {
     }
     
     formatMessage(text) {
+        console.log('Original text:', text);
+        
+        // Format URLs first (before converting line breaks) - be very specific about URL endings
+        let formatted = text.replace(/(https?:\/\/[^\s\n<>]+?)(?=\s|$|\n|<)/g, (match, url) => {
+            console.log('Found URL:', url);
+            return `<a href="${url}" target="_blank" style="color: #667eea; text-decoration: underline;">${url}</a>`;
+        });
+        
+        console.log('After URL formatting:', formatted);
+        
         // Convert line breaks to HTML
-        let formatted = text.replace(/\n/g, '<br>');
+        formatted = formatted.replace(/\n/g, '<br>');
+        
+        console.log('After line break conversion:', formatted);
         
         // Format bold text (markdown-style)
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         
-        // Format URLs
-        formatted = formatted.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color: #667eea; text-decoration: underline;">$1</a>');
+        console.log('Final formatted text:', formatted);
         
         // Format currency symbols and emojis (keep as is)
         // They're already in the text
