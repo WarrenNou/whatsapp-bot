@@ -1558,6 +1558,9 @@ class FinancialNewsAnalyzer:
             # 3. Get global market indices 
             indices_data = self._get_global_indices()
             
+            # 4. Get commodity data from CoinGecko
+            coingecko_commodities = self._get_coingecko_commodities()
+            
             # 4. Major FX Pairs with detailed analysis
             analysis += "💱 **MAJOR CURRENCY PAIRS - LIVE DATA**\n"
             fx_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD']
@@ -1598,16 +1601,28 @@ class FinancialNewsAnalyzer:
                         change_pct = data.get('change_percent', 0)
                         analysis += f"• **{symbol}**: ${price:,.2f} ({change_pct:+.2f}%)\n"
             
-            # 6. Commodities with futures analysis
+            # 6. Commodities with CoinGecko and live data
             analysis += "\n🥇 **COMMODITIES & FUTURES - LIVE PRICES**\n"
-            commodities = ['Gold', 'Silver', 'Oil_WTI']
             
-            for commodity in commodities:
-                if commodity in market_data:
+            # Prioritize CoinGecko commodity data, fallback to existing market data
+            commodities_to_show = ['Gold', 'Silver', 'Oil_WTI']
+            
+            for commodity in commodities_to_show:
+                data = None
+                source = 'market'
+                
+                # First try CoinGecko data
+                if commodity in coingecko_commodities:
+                    data = coingecko_commodities[commodity]
+                    source = data.get('source', 'coingecko')
+                # Fallback to existing market data
+                elif commodity in market_data:
                     data = market_data[commodity]
+                    source = data.get('source', 'market')
+                
+                if data:
                     price = data.get('price', 0)
                     change_pct = data.get('change_percent', 0)
-                    source = data.get('source', 'market')
                     
                     commodity_analysis = self._analyze_commodity_trend(commodity, price, change_pct)
                     
@@ -1680,13 +1695,71 @@ class FinancialNewsAnalyzer:
         
         return {}
     
-    def _get_global_indices(self) -> Dict:
-        """Get global stock indices data"""
+    def _get_coingecko_commodities(self) -> Dict:
+        """Get commodity prices from CoinGecko API (gold, silver)"""
         try:
-            # Try to get basic indices data - this can be expanded with more APIs
+            # CoinGecko API for precious metals (tokenized versions)
+            # Using Pax Gold (PAXG) for gold and other tokenized commodities
+            commodities_ids = ['pax-gold', 'silver-tokenized-stock-ftx']  # These are tokenized precious metals
+            url = f"https://api.coingecko.com/api/v3/simple/price?ids={','.join(commodities_ids)}&vs_currencies=usd&include_24hr_change=true"
+            
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                commodities_data = {}
+                
+                # Map the tokenized assets to actual commodity names
+                if 'pax-gold' in data:
+                    paxg_data = data['pax-gold']
+                    commodities_data['Gold'] = {
+                        'price': paxg_data.get('usd', 0),
+                        'change_percent': paxg_data.get('usd_24h_change', 0),
+                        'source': 'coingecko'
+                    }
+                
+                if 'silver-tokenized-stock-ftx' in data:
+                    silver_data = data['silver-tokenized-stock-ftx']
+                    commodities_data['Silver'] = {
+                        'price': silver_data.get('usd', 0),
+                        'change_percent': silver_data.get('usd_24h_change', 0),
+                        'source': 'coingecko'
+                    }
+                
+                # For WTI Oil, use the existing Yahoo Finance method as CoinGecko doesn't have direct oil futures
+                try:
+                    import yfinance as yf
+                    oil_ticker = yf.Ticker("CL=F")  # WTI Crude Oil futures
+                    oil_hist = oil_ticker.history(period="2d")
+                    
+                    if not oil_hist.empty and len(oil_hist) > 0:
+                        current_price = oil_hist['Close'].iloc[-1]
+                        if len(oil_hist) > 1:
+                            prev_price = oil_hist['Close'].iloc[-2]
+                            change_pct = ((current_price - prev_price) / prev_price) * 100
+                        else:
+                            change_pct = 0
+                        
+                        commodities_data['Oil_WTI'] = {
+                            'price': current_price,
+                            'change_percent': change_pct,
+                            'source': 'yahoo_finance'
+                        }
+                except:
+                    pass
+                
+                return commodities_data
+                
+        except Exception as e:
+            logger.debug(f"Error getting CoinGecko commodities: {e}")
+        
+        return {}
+    
+    def _get_global_indices(self) -> Dict:
+        """Get global stock indices data using Yahoo Finance"""
+        try:
+            import yfinance as yf
             indices = {}
             
-            # For now, provide placeholder structure that can be enhanced
             indices_symbols = {
                 'S&P 500': '^GSPC',
                 'NASDAQ': '^IXIC', 
@@ -1695,12 +1768,41 @@ class FinancialNewsAnalyzer:
                 'Nikkei 225': '^N225'
             }
             
-            # This could be enhanced with Yahoo Finance or other APIs
+            # Get real data from Yahoo Finance
             for name, symbol in indices_symbols.items():
-                indices[name] = {
-                    'value': 'Loading...',
-                    'change': 'Loading...'
-                }
+                try:
+                    ticker = yf.Ticker(symbol)
+                    hist = ticker.history(period="2d")
+                    
+                    if not hist.empty and len(hist) > 0:
+                        current_price = hist['Close'].iloc[-1]
+                        
+                        # Calculate change
+                        if len(hist) > 1:
+                            prev_price = hist['Close'].iloc[-2]
+                            change = current_price - prev_price
+                            change_pct = ((current_price - prev_price) / prev_price) * 100
+                        else:
+                            change = 0
+                            change_pct = 0
+                        
+                        indices[name] = {
+                            'value': f"{current_price:,.2f}",
+                            'change': f"{change_pct:+.2f}%"
+                        }
+                    else:
+                        # Fallback if no data
+                        indices[name] = {
+                            'value': 'N/A',
+                            'change': 'N/A'
+                        }
+                        
+                except Exception as e:
+                    logger.debug(f"Error getting {name} data: {e}")
+                    indices[name] = {
+                        'value': 'N/A',
+                        'change': 'N/A'
+                    }
             
             return indices
             
