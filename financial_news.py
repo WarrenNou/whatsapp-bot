@@ -416,7 +416,7 @@ class FinancialNewsAnalyzer:
             return etf_price
     
     def get_finviz_news(self):
-        """Get financial news from Finviz"""
+        """Get enhanced financial news from Finviz with more detailed data"""
         if not FINVIZ_AVAILABLE:
             return []
             
@@ -427,13 +427,38 @@ class FinancialNewsAnalyzer:
             news_items = []
             if 'news' in all_news and not all_news['news'].empty:
                 news_df = all_news['news']
-                for _, row in news_df.head(10).iterrows():
+                
+                # Get more comprehensive news data
+                for _, row in news_df.head(15).iterrows():  # Increased from 10 to 15
+                    title = row.get('Title', 'No title')
+                    link = row.get('Link', '')
+                    date = row.get('Date', '')
+                    
+                    # Extract additional information from the link if available
+                    summary = title  # Use title as summary for now
+                    
+                    # Try to get time from date string and format it better
+                    formatted_time = ''
+                    if date:
+                        try:
+                            # Parse different date formats that Finviz might use
+                            if isinstance(date, str):
+                                # Handle formats like "Dec-18 06:15AM"
+                                if 'AM' in date or 'PM' in date:
+                                    formatted_time = date
+                                else:
+                                    formatted_time = date
+                            else:
+                                formatted_time = str(date)
+                        except:
+                            formatted_time = str(date) if date else ''
+                    
                     news_item = {
-                        'title': row.get('Title', 'No title'),
-                        'summary': row.get('Title', 'No summary'),  # Finviz doesn't provide summaries
-                        'url': row.get('Link', ''),
-                        'published': row.get('Date', ''),
-                        'source': 'Finviz News'
+                        'title': title,
+                        'summary': summary,
+                        'url': link,
+                        'published': formatted_time,
+                        'source': 'Eva News'
                     }
                     news_items.append(news_item)
                     
@@ -442,6 +467,39 @@ class FinancialNewsAnalyzer:
         except Exception as e:
             logger.error(f"Error getting Finviz news: {e}")
             return []
+    
+    def get_finviz_market_overview(self):
+        """Get comprehensive market overview from Finviz including top gainers/losers"""
+        if not FINVIZ_AVAILABLE:
+            return {}
+            
+        try:
+            overview = Overview()
+            
+            # Get different market segments
+            market_data = {}
+            
+            # Top gainers and losers
+            try:
+                gainers = overview.screener_view(order='change', view='overview')
+                if not gainers.empty:
+                    market_data['top_gainers'] = gainers.head(3)[['Ticker', 'Company', 'Change']].to_dict('records')
+            except Exception as e:
+                logger.warning(f"Could not get gainers: {e}")
+                
+            try:
+                # Set to losers (negative change)
+                losers = overview.screener_view(order='-change', view='overview') 
+                if not losers.empty:
+                    market_data['top_losers'] = losers.head(3)[['Ticker', 'Company', 'Change']].to_dict('records')
+            except Exception as e:
+                logger.warning(f"Could not get losers: {e}")
+                
+            return market_data
+            
+        except Exception as e:
+            logger.error(f"Error getting Finviz market overview: {e}")
+            return {}
         """Get market data from Finviz (free source)"""
         try:
             finviz_urls = {
@@ -608,78 +666,96 @@ class FinancialNewsAnalyzer:
             logger.warning(f"Error getting free market data for {symbol_name}: {e}")
             return None
         
-    def get_latest_financial_news(self, limit: int = 10) -> List[Dict]:
-        """Get latest financial news from multiple sources including Finviz"""
-        cache_key = f"financial_news_{limit}"
+    def get_latest_financial_news(self, limit: int = 10, include_market_overview: bool = False) -> Dict:
+        """Get latest financial news from multiple sources including enhanced Finviz data"""
+        cache_key = f"financial_news_{limit}_{include_market_overview}"
         
         # Check cache first
         if self._is_cache_valid(cache_key, self.news_cache):
             return self.news_cache[cache_key]['data']
             
         all_news = []
+        market_overview = {}
         
         try:
-            # Try Finviz news first (usually more reliable)
+            # Try Finviz news first (usually more reliable and comprehensive)
             if FINVIZ_AVAILABLE:
                 try:
                     finviz_news = self.get_finviz_news()
-                    all_news.extend(finviz_news[:5])  # Top 5 from Finviz
+                    # Take more news from Finviz since it's usually better quality
+                    all_news.extend(finviz_news[:min(8, len(finviz_news))])  # Increased from 5 to 8
+                    logger.info(f"Retrieved {len(finviz_news[:8])} articles from Finviz")
+                    
+                    # Get market overview if requested
+                    if include_market_overview:
+                        market_overview = self.get_finviz_market_overview()
+                        
                 except Exception as e:
                     logger.warning(f"Finviz news failed: {e}")
             
-            # Get news from RSS sources as backup
-            for source_name, feed_url in list(self.news_sources.items())[:2]:  # Limit to avoid timeout
-                try:
-                    response = requests.get(feed_url, timeout=10)
-                    response.raise_for_status()
-                    
-                    # Parse RSS XML
-                    root = ET.fromstring(response.content)
-                    
-                    # Find all item/entry elements
-                    items = root.findall('.//item') or root.findall('.//entry')
-                    
-                    for item in items[:3]:  # Top 3 from each source
-                        title_elem = item.find('title')
-                        desc_elem = item.find('description') or item.find('summary')
-                        link_elem = item.find('link')
-                        date_elem = item.find('pubDate') or item.find('published')
+            # If we need more news or Finviz failed, get from RSS sources
+            if len(all_news) < limit:
+                remaining_needed = limit - len(all_news)
+                
+                for source_name, feed_url in list(self.news_sources.items())[:3]:  # Increased from 2 to 3 sources
+                    try:
+                        response = requests.get(feed_url, timeout=15)  # Increased timeout
+                        response.raise_for_status()
                         
-                        title = title_elem.text if title_elem is not None else 'No title'
-                        summary = desc_elem.text if desc_elem is not None else 'No summary'
-                        url = link_elem.text if link_elem is not None else ''
-                        published = date_elem.text if date_elem is not None else ''
+                        # Parse RSS XML
+                        root = ET.fromstring(response.content)
                         
-                        # Clean HTML from summary
-                        if summary:
-                            summary = self._clean_html(summary)
+                        # Find all item/entry elements
+                        items = root.findall('.//item') or root.findall('.//entry')
                         
-                        news_item = {
-                            'title': title,
-                            'summary': summary,
-                            'url': url,
-                            'published': published,
-                            'source': source_name
-                        }
-                        all_news.append(news_item)
+                        items_per_source = max(2, remaining_needed // 3)  # At least 2 items per source
+                        for item in items[:items_per_source]:
+                            title_elem = item.find('title')
+                            desc_elem = item.find('description') or item.find('summary')
+                            link_elem = item.find('link')
+                            date_elem = item.find('pubDate') or item.find('published')
+                            
+                            title = title_elem.text if title_elem is not None else 'No title'
+                            summary = desc_elem.text if desc_elem is not None else title  # Use title if no summary
+                            url = link_elem.text if link_elem is not None else ''
+                            published = date_elem.text if date_elem is not None else ''
+                            
+                            # Clean HTML from summary
+                            if summary:
+                                summary = self._clean_html(summary)
+                            
+                            news_item = {
+                                'title': title,
+                                'summary': summary,
+                                'url': url,
+                                'published': published,
+                                'source': source_name
+                            }
+                            all_news.append(news_item)
+                            
+                    except Exception as e:
+                        logger.warning(f"Failed to get news from {source_name}: {e}")
                         
-                except Exception as e:
-                    logger.warning(f"Failed to get news from {source_name}: {e}")
-                    
             # Sort by relevance to FX/trading
             all_news = self._filter_fx_relevant_news(all_news)
             
+            # Prepare result
+            result = {
+                'news': all_news[:limit],
+                'market_overview': market_overview if include_market_overview else {}
+            }
+            
             # Cache the results
             self.news_cache[cache_key] = {
-                'data': all_news[:limit],
+                'data': result,
                 'timestamp': datetime.now()
             }
             
-            return all_news[:limit]
+            return result
             
         except Exception as e:
             logger.error(f"Error getting financial news: {e}")
-            return []
+            return {'news': [], 'market_overview': {}}
             
     def _get_yahoo_finance_news(self, limit: int = 5) -> List[Dict]:
         """Get news specifically from Yahoo Finance"""
@@ -981,7 +1057,13 @@ class FinancialNewsAnalyzer:
         """Generate comprehensive trading insights based on current market conditions with enhanced AI analysis"""
         try:
             # Get fresh data
-            news = self.get_latest_financial_news(limit=8)
+            news_result = self.get_latest_financial_news(limit=8)
+            # Handle new format (dict) vs old format (list)
+            if isinstance(news_result, dict):
+                news = news_result.get('news', [])
+            else:
+                news = news_result  # Old format compatibility
+                
             currency_analysis = self.get_currency_analysis()
             commodities_analysis = self.get_commodities_analysis()
             news_impact = self.analyze_news_impact(news)

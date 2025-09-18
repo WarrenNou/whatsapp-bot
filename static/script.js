@@ -108,14 +108,25 @@ class ChatBot {
         messageDiv.className = `message ${sender}-message`;
         
         const currentTime = this.formatTime(new Date());
+        const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        // Add copy button only for bot messages
+        const copyButton = sender === 'bot' ? `
+            <button class="copy-button" onclick="copyMessage('${messageId}')" title="Copy message">
+                <i class="fas fa-copy"></i>
+            </button>
+        ` : '';
         
         messageDiv.innerHTML = `
             <div class="message-avatar">
                 <i class="fas ${sender === 'user' ? 'fa-user' : 'fa-robot'}"></i>
             </div>
             <div class="message-content">
-                <div class="message-text">${this.formatMessage(text)}</div>
-                <div class="message-time">${currentTime}</div>
+                <div class="message-text" id="${messageId}">${this.formatMessage(text)}</div>
+                <div class="message-footer">
+                    <div class="message-time">${currentTime}</div>
+                    ${copyButton}
+                </div>
             </div>
         `;
         
@@ -183,6 +194,85 @@ function sendMessage() {
     }
 }
 
+// Copy message function
+function copyMessage(messageId) {
+    const messageElement = document.getElementById(messageId);
+    if (!messageElement) return;
+    
+    // Get the text content without HTML tags
+    const textToCopy = messageElement.innerText || messageElement.textContent;
+    
+    // Use the modern clipboard API if available
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            showCopyNotification();
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            fallbackCopyTextToClipboard(textToCopy);
+        });
+    } else {
+        // Fallback for older browsers
+        fallbackCopyTextToClipboard(textToCopy);
+    }
+}
+
+// Fallback copy function for older browsers
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    // Avoid scrolling to bottom
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showCopyNotification();
+        }
+    } catch (err) {
+        console.error('Fallback: Oops, unable to copy', err);
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+// Show copy notification
+function showCopyNotification() {
+    // Remove any existing notification
+    const existing = document.querySelector('.copy-notification');
+    if (existing) {
+        existing.remove();
+    }
+    
+    // Create notification
+    const notification = document.createElement('div');
+    notification.className = 'copy-notification';
+    notification.innerHTML = '<i class="fas fa-check"></i> Copied to clipboard';
+    
+    document.body.appendChild(notification);
+    
+    // Show notification
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+    
+    // Hide and remove notification
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 2000);
+}
+
 // Initialize chat when page loads
 document.addEventListener('DOMContentLoaded', () => {
     window.chatBot = new ChatBot();
@@ -226,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Add CSS for ripple effect
+// Add CSS for ripple effect and copy functionality
 const style = document.createElement('style');
 style.textContent = `
     .quick-btn, #send-button {
@@ -248,6 +338,69 @@ style.textContent = `
             transform: scale(4);
             opacity: 0;
         }
+    }
+    
+    /* Copy button styles */
+    .message-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 5px;
+    }
+    
+    .copy-button {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        transition: all 0.2s ease;
+        opacity: 0.7;
+    }
+    
+    .copy-button:hover {
+        color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+        opacity: 1;
+    }
+    
+    .bot-message .copy-button {
+        color: #64748b;
+    }
+    
+    .bot-message .copy-button:hover {
+        color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+    }
+    
+    /* Copy notification styles */
+    .copy-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 0.9em;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateX(400px);
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .copy-notification.show {
+        transform: translateX(0);
+    }
+    
+    .copy-notification i {
+        font-size: 1em;
     }
 `;
 document.head.appendChild(style);

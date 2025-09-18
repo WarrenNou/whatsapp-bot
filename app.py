@@ -1284,28 +1284,72 @@ def handle_fx_commands(message: str) -> Optional[str]:
     if any(keyword in message_lower for keyword in ['financial news', 'market news', 'news', 'latest news']):
         if financial_analyzer:
             try:
-                news_data = financial_analyzer.get_latest_financial_news(limit=5)
+                # Request enhanced news with market overview for comprehensive coverage
+                include_overview = 'comprehensive' in message_lower or 'detailed' in message_lower
+                news_result = financial_analyzer.get_latest_financial_news(limit=8, include_market_overview=include_overview)
+                
+                # Handle both old format (list) and new format (dict) for compatibility
+                if isinstance(news_result, dict):
+                    news_data = news_result.get('news', [])
+                    market_overview = news_result.get('market_overview', {})
+                else:
+                    news_data = news_result  # Old format compatibility
+                    market_overview = {}
+                
                 if news_data:
                     response = "📰 **LATEST FINANCIAL NEWS**\n\n"
-                    for idx, article in enumerate(news_data[:5], 1):
+                    
+                    # Add market overview if available
+                    if market_overview:
+                        if 'top_gainers' in market_overview and market_overview['top_gainers']:
+                            response += "📈 **TOP GAINERS:**\n"
+                            for gainer in market_overview['top_gainers'][:3]:
+                                ticker = gainer.get('Ticker', 'N/A')
+                                change = gainer.get('Change', 'N/A')
+                                response += f"• {ticker}: {change}\n"
+                            response += "\n"
+                        
+                        if 'top_losers' in market_overview and market_overview['top_losers']:
+                            response += "📉 **TOP LOSERS:**\n"
+                            for loser in market_overview['top_losers'][:3]:
+                                ticker = loser.get('Ticker', 'N/A')
+                                change = loser.get('Change', 'N/A')
+                                response += f"• {ticker}: {change}\n"
+                            response += "\n"
+                    
+                    # Add news articles
+                    for idx, article in enumerate(news_data[:8], 1):  # Show up to 8 articles
                         title = article.get('title', 'No title')
                         summary = article.get('summary', '')
                         published = article.get('published', '')
                         source = article.get('source', 'Unknown')
+                        url = article.get('url', '')
                         
+                        # Enhanced formatting with numbering
                         response += f"**{idx}. {title}**\n"
                         
-                        if summary:
+                        if summary and summary != title:
                             # Clean and limit summary
                             clean_summary = summary.replace('<p>', '').replace('</p>', '').replace('<br>', ' ')
-                            clean_summary = clean_summary[:200] + "..." if len(clean_summary) > 200 else clean_summary
-                            response += f"📝 {clean_summary}\n"
+                            clean_summary = re.sub(r'<[^>]+>', '', clean_summary)  # Remove any remaining HTML tags
+                            clean_summary = clean_summary.strip()
+                            if len(clean_summary) > 150:
+                                clean_summary = clean_summary[:150] + "..."
+                            if clean_summary:
+                                response += f"📝 {clean_summary}\n"
                         
                         if published:
                             response += f"📅 {published}\n"
-                        response += f"🔗 Source: {source}\n\n"
                         
-                    response += "💡 **Want more?** Ask for 'market analysis' or 'trading insights'"
+                        response += f"🔗 Source: {source}"
+                        
+                        # Add direct link if available
+                        if url:
+                            response += f" - [Read more]({url})"
+                        
+                        response += "\n\n"
+                        
+                    response += "💡 **Want more?** Ask for 'market analysis' or 'trading insights' to get deeper market data from Finviz and other sources!"
                     return response
                 else:
                     return "📰 No financial news available at the moment. Please try again later."
