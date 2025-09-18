@@ -1361,6 +1361,359 @@ class FinancialNewsAnalyzer:
         cache_time = cache_dict[cache_key]['timestamp']
         return (datetime.now() - cache_time).seconds < self.cache_timeout
 
+    def format_financial_news_report(self, news_items: List[Dict], include_links: bool = True) -> str:
+        """
+        Format financial news into a comprehensive report with clickable links
+        
+        Args:
+            news_items: List of news dictionaries
+            include_links: Whether to include clickable URLs
+            
+        Returns:
+            Formatted news report string
+        """
+        if not news_items:
+            return "❌ No financial news available at the moment"
+        
+        report = "📰 **LATEST FINANCIAL NEWS**\n\n"
+        
+        for i, item in enumerate(news_items, 1):
+            title = item.get('title', 'No title')
+            summary = item.get('summary', title)  # Use title if no summary
+            url = item.get('url', '')
+            published = item.get('published', '')
+            source = item.get('source', 'Unknown')
+            
+            # Format timestamp
+            time_str = ""
+            if published:
+                try:
+                    # Try to parse and format the date
+                    from dateutil import parser
+                    parsed_date = parser.parse(published)
+                    time_str = parsed_date.strftime("%I:%M%p")
+                except:
+                    time_str = published[:10] if len(published) > 10 else published
+            
+            # Create news entry
+            report += f"{i}. **{title}**\n"
+            
+            if summary and summary != title:
+                # Truncate summary if too long
+                if len(summary) > 150:
+                    summary = summary[:147] + "..."
+                report += f"📝 {summary}\n"
+            
+            if time_str:
+                report += f"📅 {time_str}\n"
+            
+            if include_links and url:
+                report += f"🔗 [Read more]({url})\n"
+            
+            report += f"📊 Source: {source}\n\n"
+        
+        report += "💡 *Want more? Ask for 'market analysis' or 'trading insights'*"
+        return report
+
+    def get_enhanced_market_analysis(self) -> str:
+        """
+        Get comprehensive market analysis with insights and trends
+        """
+        try:
+            # Get current market data
+            market_data = self.get_market_data()
+            
+            # Get latest news for context
+            news_items = self.get_latest_financial_news(limit=5)
+            
+            analysis = "📊 **COMPREHENSIVE MARKET ANALYSIS**\n\n"
+            
+            # Major FX Pairs Analysis
+            analysis += "💱 **MAJOR FX PAIRS:**\n"
+            fx_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD']
+            
+            for pair in fx_pairs:
+                if pair in market_data:
+                    data = market_data[pair]
+                    price = data.get('price', 0)
+                    change_pct = data.get('change_percent', 0)
+                    
+                    # Determine trend emoji
+                    if change_pct > 0.25:
+                        trend = "🟢"
+                        status = "Strong"
+                    elif change_pct > 0:
+                        trend = "🔵"
+                        status = "Mild"
+                    elif change_pct < -0.25:
+                        trend = "🔴"
+                        status = "Weak"
+                    elif change_pct < 0:
+                        trend = "🟠"
+                        status = "Soft"
+                    else:
+                        trend = "⚪"
+                        status = "Flat"
+                    
+                    analysis += f"{trend} **{pair}**: {price:.4f} ({change_pct:+.2f}%) - {status}\n"
+            
+            # Commodities Analysis
+            analysis += "\n🥇 **COMMODITIES & SAFE HAVENS:**\n"
+            commodities = ['Gold', 'Silver', 'Oil_WTI']
+            
+            for commodity in commodities:
+                if commodity in market_data:
+                    data = market_data[commodity]
+                    price = data.get('price', 0)
+                    change_pct = data.get('change_percent', 0)
+                    
+                    if commodity == 'Gold':
+                        unit = "/oz"
+                        emoji = "🥇"
+                    elif commodity == 'Silver':
+                        unit = "/oz"
+                        emoji = "🥈"
+                    elif commodity == 'Oil_WTI':
+                        unit = "/barrel"
+                        emoji = "🛢️"
+                    else:
+                        unit = ""
+                        emoji = "📊"
+                    
+                    trend = "📈" if change_pct > 0 else "📉" if change_pct < 0 else "➡️"
+                    analysis += f"{emoji} **{commodity}**: ${price:.2f}{unit} ({change_pct:+.2f}%) {trend}\n"
+            
+            # DXY Analysis
+            if 'DXY' in market_data:
+                dxy_data = market_data['DXY']
+                dxy_price = dxy_data.get('price', 0)
+                dxy_change = dxy_data.get('change_percent', 0)
+                
+                analysis += f"\n💵 **US DOLLAR INDEX (DXY)**: {dxy_price:.2f} ({dxy_change:+.2f}%)\n"
+                
+                if dxy_change > 0.5:
+                    analysis += "• USD showing strong momentum - bearish for commodities\n"
+                elif dxy_change < -0.5:
+                    analysis += "• USD weakening - supportive for commodities and risk assets\n"
+                else:
+                    analysis += "• USD in consolidation - mixed signals for markets\n"
+            
+            # Market Sentiment Analysis
+            analysis += "\n🎯 **MARKET SENTIMENT:**\n"
+            
+            # Analyze news sentiment
+            market_keywords = {
+                'bullish': ['rally', 'surge', 'climb', 'advance', 'gain', 'rise', 'jump', 'soar'],
+                'bearish': ['fall', 'drop', 'decline', 'plunge', 'tumble', 'sink', 'crash', 'sell-off'],
+                'neutral': ['stable', 'flat', 'unchanged', 'consolidate', 'range-bound']
+            }
+            
+            sentiment_score = 0
+            news_text = ' '.join([item.get('title', '') + ' ' + item.get('summary', '') for item in news_items]).lower()
+            
+            for word in market_keywords['bullish']:
+                sentiment_score += news_text.count(word) * 1
+            for word in market_keywords['bearish']:
+                sentiment_score += news_text.count(word) * -1
+            
+            if sentiment_score > 2:
+                sentiment = "🟢 **Bullish** - Positive market momentum"
+            elif sentiment_score < -2:
+                sentiment = "🔴 **Bearish** - Risk-off sentiment prevailing"
+            else:
+                sentiment = "🟡 **Mixed** - Markets in wait-and-see mode"
+            
+            analysis += f"• {sentiment}\n"
+            
+            # Key Levels and Insights
+            analysis += "\n🎯 **KEY TRADING INSIGHTS:**\n"
+            
+            # EUR/USD insights
+            if 'EUR/USD' in market_data:
+                eur_price = market_data['EUR/USD'].get('price', 0)
+                if eur_price > 1.09:
+                    analysis += "• EUR/USD above 1.09 - watch for ECB policy divergence\n"
+                elif eur_price < 1.05:
+                    analysis += "• EUR/USD under pressure - USD strength or EU concerns\n"
+                else:
+                    analysis += "• EUR/USD in key range - breakout pending\n"
+            
+            # Gold insights
+            if 'Gold' in market_data:
+                gold_price = market_data['Gold'].get('price', 0)
+                if gold_price > 2700:
+                    analysis += "• Gold at record highs - inflation hedge or safe haven bid\n"
+                elif gold_price < 2500:
+                    analysis += "• Gold under pressure - USD strength or yield rise\n"
+                else:
+                    analysis += "• Gold in consolidation - watch Fed policy signals\n"
+            
+            analysis += "\n💡 *Ask for 'gold prices' for detailed precious metals analysis*"
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Error generating market analysis: {e}")
+            return "❌ Unable to generate market analysis at this time"
+
+    def get_enhanced_trading_insights(self, query: str = "") -> str:
+        """
+        Get enhanced trading insights with actionable information
+        
+        Args:
+            query: Optional specific query for focused insights
+            
+        Returns:
+            Detailed trading insights and recommendations
+        """
+        try:
+            # Get market data and news
+            market_data = self.get_market_data()
+            news_items = self.get_latest_financial_news(limit=8)
+            
+            insights = "🎯 **ENHANCED TRADING INSIGHTS**\n\n"
+            
+            # Query-specific insights
+            if query.lower():
+                query_lower = query.lower()
+                if any(word in query_lower for word in ['gold', 'precious', 'metal']):
+                    # Get comprehensive gold data if available
+                    gold_comprehensive = self.get_comprehensive_gold_data()
+                    if gold_comprehensive.get('success'):
+                        insights += gold_comprehensive['formatted_report']
+                        return insights
+                    else:
+                        # Fallback to basic gold analysis
+                        if 'Gold' in market_data:
+                            gold_data = market_data['Gold']
+                            price = gold_data.get('price', 0)
+                            change_pct = gold_data.get('change_percent', 0)
+                            insights += f"🥇 **GOLD ANALYSIS:**\n"
+                            insights += f"• Current: ${price:.2f}/oz ({change_pct:+.2f}%)\n"
+                            insights += f"• Trend: {'Bullish' if change_pct > 0 else 'Bearish' if change_pct < 0 else 'Neutral'}\n\n"
+                
+                elif any(word in query_lower for word in ['usd', 'dollar', 'dxy']):
+                    if 'DXY' in market_data:
+                        dxy_data = market_data['DXY']
+                        insights += f"💵 **USD ANALYSIS:**\n"
+                        insights += f"• DXY: {dxy_data.get('price', 0):.2f} ({dxy_data.get('change_percent', 0):+.2f}%)\n"
+                        insights += f"• Impact: {'USD strength pressuring commodities' if dxy_data.get('change_percent', 0) > 0 else 'USD weakness supporting risk assets'}\n\n"
+            
+            # Overall market assessment
+            insights += "📊 **MARKET OVERVIEW:**\n"
+            
+            # Risk sentiment
+            risk_on_pairs = ['EUR/USD', 'GBP/USD', 'AUD/USD']
+            risk_sentiment = 0
+            
+            for pair in risk_on_pairs:
+                if pair in market_data:
+                    change = market_data[pair].get('change_percent', 0)
+                    risk_sentiment += change
+            
+            avg_risk = risk_sentiment / len(risk_on_pairs) if risk_on_pairs else 0
+            
+            if avg_risk > 0.2:
+                insights += "• 🟢 **Risk-On Environment** - Growth currencies outperforming\n"
+            elif avg_risk < -0.2:
+                insights += "• 🔴 **Risk-Off Environment** - Safe havens in demand\n"
+            else:
+                insights += "• 🟡 **Mixed Sentiment** - Markets consolidating\n"
+            
+            # Volatility assessment
+            high_vol_count = 0
+            for symbol, data in market_data.items():
+                if abs(data.get('change_percent', 0)) > 1.0:
+                    high_vol_count += 1
+            
+            vol_ratio = high_vol_count / len(market_data) if market_data else 0
+            
+            if vol_ratio > 0.3:
+                insights += "• ⚡ **High Volatility** - News-driven moves likely\n"
+            elif vol_ratio < 0.1:
+                insights += "• 😴 **Low Volatility** - Range-bound trading expected\n"
+            else:
+                insights += "• 📊 **Normal Volatility** - Typical trading conditions\n"
+            
+            # Key opportunities
+            insights += "\n🎯 **TRADING OPPORTUNITIES:**\n"
+            
+            # Find biggest movers
+            biggest_gainers = []
+            biggest_losers = []
+            
+            for symbol, data in market_data.items():
+                change_pct = data.get('change_percent', 0)
+                if change_pct > 0.5:
+                    biggest_gainers.append((symbol, change_pct))
+                elif change_pct < -0.5:
+                    biggest_losers.append((symbol, change_pct))
+            
+            biggest_gainers.sort(key=lambda x: x[1], reverse=True)
+            biggest_losers.sort(key=lambda x: x[1])
+            
+            if biggest_gainers:
+                insights += "📈 **Top Movers (Up):**\n"
+                for symbol, change in biggest_gainers[:3]:
+                    insights += f"• {symbol}: +{change:.2f}% - momentum play\n"
+            
+            if biggest_losers:
+                insights += "📉 **Top Movers (Down):**\n"
+                for symbol, change in biggest_losers[:3]:
+                    insights += f"• {symbol}: {change:.2f}% - potential reversal\n"
+            
+            # News-based insights
+            if news_items:
+                insights += "\n📰 **NEWS IMPACT:**\n"
+                fed_news = any('fed' in item.get('title', '').lower() or 'powell' in item.get('title', '').lower() for item in news_items)
+                if fed_news:
+                    insights += "• 🏛️ Fed-related news detected - watch USD and rates\n"
+                
+                china_news = any('china' in item.get('title', '').lower() for item in news_items)
+                if china_news:
+                    insights += "• 🇨🇳 China news in focus - impacts AUD, NZD, commodities\n"
+                
+                oil_news = any('oil' in item.get('title', '').lower() or 'crude' in item.get('title', '').lower() for item in news_items)
+                if oil_news:
+                    insights += "• 🛢️ Oil-related developments - affects CAD, NOK\n"
+            
+            insights += "\n💡 *For detailed gold analysis with karat prices, ask for 'gold prices'*"
+            
+            return insights
+            
+        except Exception as e:
+            logger.error(f"Error generating trading insights: {e}")
+            return "❌ Unable to generate trading insights at this time"
+
+    def get_comprehensive_gold_data(self):
+        """
+        Get comprehensive gold price data using the enhanced gold functions
+        Returns detailed gold price information with different karats and weight units
+        """
+        try:
+            gold_data = fetch_all_gold_prices()
+            if gold_data:
+                return {
+                    'success': True,
+                    'data': gold_data,
+                    'formatted_report': format_gold_price_report(gold_data)
+                }
+            else:
+                # Fallback to basic gold data from existing methods
+                basic_data = self.get_market_data(['Gold'])
+                gold_basic = basic_data.get('Gold', {})
+                return {
+                    'success': False,
+                    'error': 'Enhanced gold data unavailable',
+                    'basic_data': gold_basic
+                }
+        except Exception as e:
+            logger.error(f"Error getting comprehensive gold data: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
 # Test function
 def test_financial_analyzer():
     analyzer = FinancialNewsAnalyzer()
@@ -1384,5 +1737,512 @@ def test_financial_analyzer():
     insights = analyzer.get_trading_insights("What's happening with USD today?")
     print(insights[:500] + "..." if len(insights) > 500 else insights)
 
+    def format_financial_news_report(self, news_items: List[Dict], include_links: bool = True) -> str:
+        """
+        Format financial news into a comprehensive report with clickable links
+        
+        Args:
+            news_items: List of news dictionaries
+            include_links: Whether to include clickable URLs
+            
+        Returns:
+            Formatted news report string
+        """
+        if not news_items:
+            return "❌ No financial news available at the moment"
+        
+        report = "📰 **LATEST FINANCIAL NEWS**\n\n"
+        
+        for i, item in enumerate(news_items, 1):
+            title = item.get('title', 'No title')
+            summary = item.get('summary', title)  # Use title if no summary
+            url = item.get('url', '')
+            published = item.get('published', '')
+            source = item.get('source', 'Unknown')
+            
+            # Format timestamp
+            time_str = ""
+            if published:
+                try:
+                    # Try to parse and format the date
+                    from dateutil import parser
+                    parsed_date = parser.parse(published)
+                    time_str = parsed_date.strftime("%I:%M%p")
+                except:
+                    time_str = published[:10] if len(published) > 10 else published
+            
+            # Create news entry
+            report += f"{i}. **{title}**\n"
+            
+            if summary and summary != title:
+                # Truncate summary if too long
+                if len(summary) > 150:
+                    summary = summary[:147] + "..."
+                report += f"📝 {summary}\n"
+            
+            if time_str:
+                report += f"📅 {time_str}\n"
+            
+            if include_links and url:
+                report += f"🔗 [Read more]({url})\n"
+            
+            report += f"📊 Source: {source}\n\n"
+        
+        report += "💡 *Want more? Ask for 'market analysis' or 'trading insights'*"
+        return report
+
+    def get_enhanced_market_analysis(self) -> str:
+        """
+        Get comprehensive market analysis with insights and trends
+        """
+        try:
+            # Get current market data
+            market_data = self.get_market_data()
+            
+            # Get latest news for context
+            news_items = self.get_latest_financial_news(limit=5)
+            
+            analysis = "📊 **COMPREHENSIVE MARKET ANALYSIS**\n\n"
+            
+            # Major FX Pairs Analysis
+            analysis += "💱 **MAJOR FX PAIRS:**\n"
+            fx_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD']
+            
+            for pair in fx_pairs:
+                if pair in market_data:
+                    data = market_data[pair]
+                    price = data.get('price', 0)
+                    change_pct = data.get('change_percent', 0)
+                    
+                    # Determine trend emoji
+                    if change_pct > 0.25:
+                        trend = "🟢"
+                        status = "Strong"
+                    elif change_pct > 0:
+                        trend = "🔵"
+                        status = "Mild"
+                    elif change_pct < -0.25:
+                        trend = "🔴"
+                        status = "Weak"
+                    elif change_pct < 0:
+                        trend = "🟠"
+                        status = "Soft"
+                    else:
+                        trend = "⚪"
+                        status = "Flat"
+                    
+                    analysis += f"{trend} **{pair}**: {price:.4f} ({change_pct:+.2f}%) - {status}\n"
+            
+            # Commodities Analysis
+            analysis += "\n🥇 **COMMODITIES & SAFE HAVENS:**\n"
+            commodities = ['Gold', 'Silver', 'Oil_WTI']
+            
+            for commodity in commodities:
+                if commodity in market_data:
+                    data = market_data[commodity]
+                    price = data.get('price', 0)
+                    change_pct = data.get('change_percent', 0)
+                    
+                    if commodity == 'Gold':
+                        unit = "/oz"
+                        emoji = "🥇"
+                    elif commodity == 'Silver':
+                        unit = "/oz"
+                        emoji = "🥈"
+                    elif commodity == 'Oil_WTI':
+                        unit = "/barrel"
+                        emoji = "🛢️"
+                    else:
+                        unit = ""
+                        emoji = "📊"
+                    
+                    trend = "📈" if change_pct > 0 else "📉" if change_pct < 0 else "➡️"
+                    analysis += f"{emoji} **{commodity}**: ${price:.2f}{unit} ({change_pct:+.2f}%) {trend}\n"
+            
+            # DXY Analysis
+            if 'DXY' in market_data:
+                dxy_data = market_data['DXY']
+                dxy_price = dxy_data.get('price', 0)
+                dxy_change = dxy_data.get('change_percent', 0)
+                
+                analysis += f"\n💵 **US DOLLAR INDEX (DXY)**: {dxy_price:.2f} ({dxy_change:+.2f}%)\n"
+                
+                if dxy_change > 0.5:
+                    analysis += "• USD showing strong momentum - bearish for commodities\n"
+                elif dxy_change < -0.5:
+                    analysis += "• USD weakening - supportive for commodities and risk assets\n"
+                else:
+                    analysis += "• USD in consolidation - mixed signals for markets\n"
+            
+            # Market Sentiment Analysis
+            analysis += "\n🎯 **MARKET SENTIMENT:**\n"
+            
+            # Analyze news sentiment
+            market_keywords = {
+                'bullish': ['rally', 'surge', 'climb', 'advance', 'gain', 'rise', 'jump', 'soar'],
+                'bearish': ['fall', 'drop', 'decline', 'plunge', 'tumble', 'sink', 'crash', 'sell-off'],
+                'neutral': ['stable', 'flat', 'unchanged', 'consolidate', 'range-bound']
+            }
+            
+            sentiment_score = 0
+            news_text = ' '.join([item.get('title', '') + ' ' + item.get('summary', '') for item in news_items]).lower()
+            
+            for word in market_keywords['bullish']:
+                sentiment_score += news_text.count(word) * 1
+            for word in market_keywords['bearish']:
+                sentiment_score += news_text.count(word) * -1
+            
+            if sentiment_score > 2:
+                sentiment = "🟢 **Bullish** - Positive market momentum"
+            elif sentiment_score < -2:
+                sentiment = "🔴 **Bearish** - Risk-off sentiment prevailing"
+            else:
+                sentiment = "🟡 **Mixed** - Markets in wait-and-see mode"
+            
+            analysis += f"• {sentiment}\n"
+            
+            # Key Levels and Insights
+            analysis += "\n🎯 **KEY TRADING INSIGHTS:**\n"
+            
+            # EUR/USD insights
+            if 'EUR/USD' in market_data:
+                eur_price = market_data['EUR/USD'].get('price', 0)
+                if eur_price > 1.09:
+                    analysis += "• EUR/USD above 1.09 - watch for ECB policy divergence\n"
+                elif eur_price < 1.05:
+                    analysis += "• EUR/USD under pressure - USD strength or EU concerns\n"
+                else:
+                    analysis += "• EUR/USD in key range - breakout pending\n"
+            
+            # Gold insights
+            if 'Gold' in market_data:
+                gold_price = market_data['Gold'].get('price', 0)
+                if gold_price > 2700:
+                    analysis += "• Gold at record highs - inflation hedge or safe haven bid\n"
+                elif gold_price < 2500:
+                    analysis += "• Gold under pressure - USD strength or yield rise\n"
+                else:
+                    analysis += "• Gold in consolidation - watch Fed policy signals\n"
+            
+            analysis += "\n💡 *Ask for 'gold prices' for detailed precious metals analysis*"
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Error generating market analysis: {e}")
+            return "❌ Unable to generate market analysis at this time"
+
+    def get_enhanced_trading_insights(self, query: str = "") -> str:
+        """
+        Get enhanced trading insights with actionable information
+        
+        Args:
+            query: Optional specific query for focused insights
+            
+        Returns:
+            Detailed trading insights and recommendations
+        """
+        try:
+            # Get market data and news
+            market_data = self.get_market_data()
+            news_items = self.get_latest_financial_news(limit=8)
+            
+            insights = "🎯 **ENHANCED TRADING INSIGHTS**\n\n"
+            
+            # Query-specific insights
+            if query.lower():
+                query_lower = query.lower()
+                if any(word in query_lower for word in ['gold', 'precious', 'metal']):
+                    # Get comprehensive gold data if available
+                    gold_comprehensive = self.get_comprehensive_gold_data()
+                    if gold_comprehensive.get('success'):
+                        insights += gold_comprehensive['formatted_report']
+                        return insights
+                    else:
+                        # Fallback to basic gold analysis
+                        if 'Gold' in market_data:
+                            gold_data = market_data['Gold']
+                            price = gold_data.get('price', 0)
+                            change_pct = gold_data.get('change_percent', 0)
+                            insights += f"🥇 **GOLD ANALYSIS:**\n"
+                            insights += f"• Current: ${price:.2f}/oz ({change_pct:+.2f}%)\n"
+                            insights += f"• Trend: {'Bullish' if change_pct > 0 else 'Bearish' if change_pct < 0 else 'Neutral'}\n\n"
+                
+                elif any(word in query_lower for word in ['usd', 'dollar', 'dxy']):
+                    if 'DXY' in market_data:
+                        dxy_data = market_data['DXY']
+                        insights += f"💵 **USD ANALYSIS:**\n"
+                        insights += f"• DXY: {dxy_data.get('price', 0):.2f} ({dxy_data.get('change_percent', 0):+.2f}%)\n"
+                        insights += f"• Impact: {'USD strength pressuring commodities' if dxy_data.get('change_percent', 0) > 0 else 'USD weakness supporting risk assets'}\n\n"
+            
+            # Overall market assessment
+            insights += "📊 **MARKET OVERVIEW:**\n"
+            
+            # Risk sentiment
+            risk_on_pairs = ['EUR/USD', 'GBP/USD', 'AUD/USD']
+            risk_sentiment = 0
+            
+            for pair in risk_on_pairs:
+                if pair in market_data:
+                    change = market_data[pair].get('change_percent', 0)
+                    risk_sentiment += change
+            
+            avg_risk = risk_sentiment / len(risk_on_pairs) if risk_on_pairs else 0
+            
+            if avg_risk > 0.2:
+                insights += "• 🟢 **Risk-On Environment** - Growth currencies outperforming\n"
+            elif avg_risk < -0.2:
+                insights += "• 🔴 **Risk-Off Environment** - Safe havens in demand\n"
+            else:
+                insights += "• 🟡 **Mixed Sentiment** - Markets consolidating\n"
+            
+            # Volatility assessment
+            high_vol_count = 0
+            for symbol, data in market_data.items():
+                if abs(data.get('change_percent', 0)) > 1.0:
+                    high_vol_count += 1
+            
+            vol_ratio = high_vol_count / len(market_data) if market_data else 0
+            
+            if vol_ratio > 0.3:
+                insights += "• ⚡ **High Volatility** - News-driven moves likely\n"
+            elif vol_ratio < 0.1:
+                insights += "• 😴 **Low Volatility** - Range-bound trading expected\n"
+            else:
+                insights += "• 📊 **Normal Volatility** - Typical trading conditions\n"
+            
+            # Key opportunities
+            insights += "\n🎯 **TRADING OPPORTUNITIES:**\n"
+            
+            # Find biggest movers
+            biggest_gainers = []
+            biggest_losers = []
+            
+            for symbol, data in market_data.items():
+                change_pct = data.get('change_percent', 0)
+                if change_pct > 0.5:
+                    biggest_gainers.append((symbol, change_pct))
+                elif change_pct < -0.5:
+                    biggest_losers.append((symbol, change_pct))
+            
+            biggest_gainers.sort(key=lambda x: x[1], reverse=True)
+            biggest_losers.sort(key=lambda x: x[1])
+            
+            if biggest_gainers:
+                insights += "📈 **Top Movers (Up):**\n"
+                for symbol, change in biggest_gainers[:3]:
+                    insights += f"• {symbol}: +{change:.2f}% - momentum play\n"
+            
+            if biggest_losers:
+                insights += "📉 **Top Movers (Down):**\n"
+                for symbol, change in biggest_losers[:3]:
+                    insights += f"• {symbol}: {change:.2f}% - potential reversal\n"
+            
+            # News-based insights
+            if news_items:
+                insights += "\n📰 **NEWS IMPACT:**\n"
+                fed_news = any('fed' in item.get('title', '').lower() or 'powell' in item.get('title', '').lower() for item in news_items)
+                if fed_news:
+                    insights += "• 🏛️ Fed-related news detected - watch USD and rates\n"
+                
+                china_news = any('china' in item.get('title', '').lower() for item in news_items)
+                if china_news:
+                    insights += "• 🇨🇳 China news in focus - impacts AUD, NZD, commodities\n"
+                
+                oil_news = any('oil' in item.get('title', '').lower() or 'crude' in item.get('title', '').lower() for item in news_items)
+                if oil_news:
+                    insights += "• 🛢️ Oil-related developments - affects CAD, NOK\n"
+            
+            insights += "\n💡 *For detailed gold analysis with karat prices, ask for 'gold prices'*"
+            
+            return insights
+            
+        except Exception as e:
+            logger.error(f"Error generating trading insights: {e}")
+            return "❌ Unable to generate trading insights at this time"
+
+    def get_comprehensive_gold_data(self):
+        """
+        Get comprehensive gold price data using the enhanced gold functions
+        Returns detailed gold price information with different karats and weight units
+        """
+        try:
+            gold_data = fetch_all_gold_prices()
+            if gold_data:
+                return {
+                    'success': True,
+                    'data': gold_data,
+                    'formatted_report': format_gold_price_report(gold_data)
+                }
+            else:
+                # Fallback to basic gold data from existing methods
+                basic_data = self.get_market_data(['Gold'])
+                gold_basic = basic_data.get('Gold', {})
+                return {
+                    'success': False,
+                    'error': 'Enhanced gold data unavailable',
+                    'basic_data': gold_basic
+                }
+        except Exception as e:
+            logger.error(f"Error getting comprehensive gold data: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+# Enhanced Gold Price Functions
+def fetch_gold_price():
+    """
+    Fetch current gold price using Yahoo Finance API
+    Returns price per troy ounce in USD
+    """
+    # URL for Gold Futures (GC=F)
+    url = "https://query1.finance.yahoo.com/v8/finance/chart/GC=F"
+    # Using proper headers to avoid rate limiting
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5"
+    }
+    
+    try:
+        # Make the request
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Extract the data
+        result = data["chart"]["result"][0]
+        current_price = result["meta"]["regularMarketPrice"]
+        previous_close = result["meta"]["previousClose"]
+        currency = result["meta"]["currency"]
+        
+        # Calculate changes
+        price_change = current_price - previous_close
+        percent_change = (price_change / previous_close) * 100
+        
+        # Format and return
+        return {
+            "symbol": "GC=F",
+            "name": "Gold Futures (24K)",
+            "price": round(current_price, 2),
+            "currency": currency,
+            "previous_close": round(previous_close, 2),
+            "change": round(price_change, 2),
+            "percent_change": round(percent_change, 2),
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+    except Exception as e:
+        logger.error(f"Error fetching gold price: {e}")
+        return None
+
+def calculate_karat_prices(pure_gold_price):
+    """
+    Calculate gold prices for different karat purities
+    """
+    karat_purity = {
+        "24K": 1.000,  # 99.9% pure gold
+        "22K": 0.917,  # 91.7% pure gold
+        "18K": 0.750,  # 75.0% pure gold
+        "14K": 0.583,  # 58.3% pure gold
+        "10K": 0.417   # 41.7% pure gold
+    }
+    
+    karat_prices = {}
+    for karat, purity in karat_purity.items():
+        karat_prices[karat] = round(pure_gold_price * purity, 2)
+    
+    return karat_prices
+
+def convert_troy_ounce_to_kg(price_per_oz):
+    """
+    Convert troy ounce price to kilogram price
+    1 troy ounce = 31.1035 grams
+    1 kilogram = 1000 grams
+    """
+    troy_oz_to_grams = 31.1035
+    grams_per_kg = 1000
+    price_per_kg = price_per_oz * (grams_per_kg / troy_oz_to_grams)
+    return round(price_per_kg, 2)
+
+def fetch_all_gold_prices():
+    """
+    Get comprehensive gold price data including different karats and weight units
+    """
+    # Get pure gold price
+    gold_data = fetch_gold_price()
+    
+    if not gold_data:
+        return None
+    
+    # Calculate prices for different karats
+    karat_prices = calculate_karat_prices(gold_data["price"])
+    
+    # Calculate prices per kilogram for each karat
+    karat_prices_kg = {}
+    for karat, price_oz in karat_prices.items():
+        karat_prices_kg[karat] = convert_troy_ounce_to_kg(price_oz)
+    
+    # Add karat prices to the gold data
+    gold_data["karat_prices_oz"] = karat_prices
+    gold_data["karat_prices_kg"] = karat_prices_kg
+    gold_data["price_per_kg"] = convert_troy_ounce_to_kg(gold_data["price"])
+    
+    return gold_data
+
+def format_gold_price_report(gold_data):
+    """
+    Format gold price data into a readable report
+    """
+    if not gold_data:
+        return "❌ Unable to fetch gold price data"
+    
+    report = f"""🥇 **GOLD PRICE REPORT** 🥇
+📅 Last Updated: {gold_data['time']}
+
+💰 **Current Gold Price (24K Pure):**
+• ${gold_data['price']:,.2f} {gold_data['currency']} per troy ounce
+• ${gold_data['price_per_kg']:,.2f} {gold_data['currency']} per kilogram
+
+📊 **Market Change:**
+• Previous Close: ${gold_data['previous_close']:,.2f}
+• Change: ${gold_data['change']:+,.2f} ({gold_data['percent_change']:+.2f}%)
+
+🔗 **Prices by Karat (per troy ounce):**"""
+    
+    for karat, price in gold_data["karat_prices_oz"].items():
+        report += f"\n• {karat}: ${price:,.2f} {gold_data['currency']}"
+    
+    report += f"\n\n🔗 **Prices by Karat (per kilogram):**"
+    
+    for karat, price in gold_data["karat_prices_kg"].items():
+        report += f"\n• {karat}: ${price:,.2f} {gold_data['currency']}"
+    
+    return report
+
 if __name__ == "__main__":
+    # Test the enhanced gold price functionality
+    print("Testing Enhanced Gold Price Functionality...")
+    print("=" * 50)
+    
+    try:
+        # Get comprehensive gold price data
+        gold_data = fetch_all_gold_prices()
+        
+        if gold_data:
+            # Display formatted report
+            print(format_gold_price_report(gold_data))
+            
+            # Also display raw data for debugging
+            print("\n" + "=" * 50)
+            print("RAW DATA:")
+            print(json.dumps(gold_data, indent=2))
+        else:
+            print("❌ Failed to fetch gold price data")
+            
+    except Exception as e:
+        print(f"❌ Error: {e}")
+    
+    print("\n" + "=" * 50)
+    print("Testing Original Financial Analyzer...")
     test_financial_analyzer()

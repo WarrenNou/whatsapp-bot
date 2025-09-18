@@ -322,6 +322,137 @@ Reply: "100 USD", "500 CNY", "200 EUR" or "1000 XOF"
         
         return rates_message
     
+    def calculate_reverse_exchange(self, amount, from_currency, to_currency):
+        """Calculate reverse exchange (e.g., XAF to USDT)"""
+        try:
+            amount = float(amount)
+            from_currency = from_currency.upper()
+            to_currency = to_currency.upper()
+            
+            # Map common currency aliases to standard codes
+            currency_mappings = {
+                'EURO': 'EUR',
+                'EUROS': 'EUR',
+                'TETHER': 'USDT',
+                'RMB': 'CNY',
+                'YUAN': 'CNY',
+                'DOLLAR': 'USD',
+                'DOLLARS': 'USD',
+                'DIRHAM': 'AED',
+                'DIRHAMS': 'AED'
+            }
+            
+            if from_currency in currency_mappings:
+                from_currency = currency_mappings[from_currency]
+            if to_currency in currency_mappings:
+                to_currency = currency_mappings[to_currency]
+            
+            if not self.calculate_rates():
+                return "⚠️ Unable to fetch current rates. Please try again."
+            
+            # XAF to other currencies
+            if from_currency == 'XAF':
+                if to_currency == 'USD':
+                    converted_amount = amount / self.base_rates['XAF_USD']
+                    rate = 1 / self.base_rates['XAF_USD']
+                elif to_currency in ['USDT', 'TETHER']:
+                    converted_amount = amount / self.base_rates['XAF_USDT']
+                    rate = 1 / self.base_rates['XAF_USDT']
+                elif to_currency == 'AED':
+                    converted_amount = amount / self.base_rates['XAF_AED']
+                    rate = 1 / self.base_rates['XAF_AED']
+                elif to_currency in ['CNY', 'RMB', 'YUAN']:
+                    converted_amount = amount / self.base_rates['XAF_CNY']
+                    rate = 1 / self.base_rates['XAF_CNY']
+                elif to_currency == 'EUR':
+                    converted_amount = amount / self.base_rates['XAF_EUR']
+                    rate = 1 / self.base_rates['XAF_EUR']
+                else:
+                    return f"❌ Conversion from {from_currency} to {to_currency} not supported"
+                    
+            # XOF to other currencies
+            elif from_currency == 'XOF':
+                if to_currency == 'USD':
+                    converted_amount = amount / self.base_rates['XOF_USD']
+                    rate = 1 / self.base_rates['XOF_USD']
+                elif to_currency in ['USDT', 'TETHER']:
+                    converted_amount = amount / self.base_rates['XOF_USDT']
+                    rate = 1 / self.base_rates['XOF_USDT']
+                elif to_currency == 'AED':
+                    converted_amount = amount / self.base_rates['XOF_AED']
+                    rate = 1 / self.base_rates['XOF_AED']
+                elif to_currency in ['CNY', 'RMB', 'YUAN']:
+                    converted_amount = amount / self.base_rates['XOF_CNY']
+                    rate = 1 / self.base_rates['XOF_CNY']
+                elif to_currency == 'EUR':
+                    converted_amount = amount / self.base_rates['XOF_EUR']
+                    rate = 1 / self.base_rates['XOF_EUR']
+                else:
+                    return f"❌ Conversion from {from_currency} to {to_currency} not supported"
+            
+            # Foreign currencies to XAF
+            elif to_currency == 'XAF':
+                if from_currency == 'USD':
+                    converted_amount = amount * self.base_rates['XAF_USD']
+                    rate = self.base_rates['XAF_USD']
+                elif from_currency in ['USDT', 'TETHER']:
+                    converted_amount = amount * self.base_rates['XAF_USDT']
+                    rate = self.base_rates['XAF_USDT']
+                elif from_currency == 'AED':
+                    converted_amount = amount * self.base_rates['XAF_AED']
+                    rate = self.base_rates['XAF_AED']
+                elif from_currency in ['CNY', 'RMB', 'YUAN']:
+                    converted_amount = amount * self.base_rates['XAF_CNY']
+                    rate = self.base_rates['XAF_CNY']
+                elif from_currency == 'EUR':
+                    converted_amount = amount * self.base_rates['XAF_EUR']
+                    rate = self.base_rates['XAF_EUR']
+                else:
+                    return f"❌ Conversion from {from_currency} to XAF not supported"
+            
+            # Foreign currencies to XOF
+            elif to_currency == 'XOF':
+                if from_currency == 'USD':
+                    converted_amount = amount * self.base_rates['XOF_USD']
+                    rate = self.base_rates['XOF_USD']
+                elif from_currency in ['USDT', 'TETHER']:
+                    converted_amount = amount * self.base_rates['XOF_USDT']
+                    rate = self.base_rates['XOF_USDT']
+                elif from_currency == 'AED':
+                    converted_amount = amount * self.base_rates['XOF_AED']
+                    rate = self.base_rates['XOF_AED']
+                elif from_currency in ['CNY', 'RMB', 'YUAN']:
+                    converted_amount = amount * self.base_rates['XOF_CNY']
+                    rate = self.base_rates['XOF_CNY']
+                elif from_currency == 'EUR':
+                    converted_amount = amount * self.base_rates['XOF_EUR']
+                    rate = self.base_rates['XOF_EUR']
+                else:
+                    return f"❌ Conversion from {from_currency} to XOF not supported"
+            else:
+                return f"❌ Conversion from {from_currency} to {to_currency} not supported"
+            
+            # Format the response
+            greeting = self.get_greeting_and_disclaimer()
+            return f"""
+{greeting}💱 **EVA FX REVERSE CALCULATION**
+
+**{amount:,} {from_currency} → {converted_amount:.6f} {to_currency}**
+
+Exchange Rate: 1 {from_currency} = {rate:.6f} {to_currency}
+Current {from_currency}/{to_currency} rate with service fee included
+
+🌐 **Contact EVA Fx:** https://whatsapp-bot-96xm.onrender.com/
+📅 Updated: {self.base_rates['last_updated']}
+⚠️ *Premium exchange rates by EVA Fx*
+            """.strip()
+            
+        except ValueError:
+            return "❌ Invalid amount. Please enter a valid number."
+        except Exception as e:
+            logger.error(f"Error in reverse exchange calculation: {e}")
+            return "❌ Error calculating exchange. Please try again."
+    
     def calculate_exchange(self, amount, currency):
         """Calculate exchange amount for a specific currency"""
         try:

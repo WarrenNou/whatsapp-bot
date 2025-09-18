@@ -1433,6 +1433,18 @@ def handle_fx_commands(message: str) -> Optional[str]:
         currency = match.group(2)
         return fx_trader.calculate_exchange(amount, currency)
     
+    # Check for reverse exchange calculations (supports both directions)
+    # Examples: "1000000 XAF to USDT", "500 CNY to XAF", "100 USD to XOF"
+    reverse_exchange_pattern = r'(\d+(?:\.\d+)?)\s*(xaf|xof|usd|usdt|aed|cny|rmb|yuan|eur|euro|tether)\s+to\s+(xaf|xof|usd|usdt|aed|cny|rmb|yuan|eur|euro|tether)\b'
+    reverse_match = re.search(reverse_exchange_pattern, message_lower)
+    if reverse_match:
+        amount = reverse_match.group(1)
+        from_currency = reverse_match.group(2)
+        to_currency = reverse_match.group(3)
+        # Only process if it involves XAF or XOF (our speciality)
+        if 'xaf' in [from_currency, to_currency] or 'xof' in [from_currency, to_currency]:
+            return fx_trader.calculate_reverse_exchange(amount, from_currency, to_currency)
+    
     # Check for trading intent - when users want to actually trade
     trading_intent_keywords = [
         'want to trade', 'need to exchange', 'ready to trade', 'proceed with trade',
