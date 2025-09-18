@@ -1363,34 +1363,35 @@ def handle_fx_commands(message: str) -> Optional[str]:
     if any(keyword in message_lower for keyword in ['market analysis', 'market data', 'market overview', 'market summary']):
         if financial_analyzer:
             try:
-                market_data = financial_analyzer.get_market_data()
-                if market_data:
-                    response = "📊 **MARKET ANALYSIS**\n\n"
-                    
-                    # Add major indices if available
-                    if 'indices' in market_data:
-                        response += "**📈 Major Indices:**\n"
-                        for symbol, data in market_data['indices'].items():
-                            change = data.get('change', 0)
-                            change_percent = data.get('change_percent', 0)
-                            trend = "📈" if change >= 0 else "📉"
-                            response += f"{trend} {symbol}: ${data.get('price', 'N/A')} ({change_percent:+.2f}%)\n"
-                        response += "\n"
-                    
-                    # Add currency info if available
-                    if 'currencies' in market_data:
-                        response += "**💱 Major Currencies:**\n"
-                        for pair, rate in market_data['currencies'].items():
-                            response += f"• {pair}: {rate}\n"
-                        response += "\n"
-                    
-                    response += "💡 **Want specific insights?** Ask for 'trading insights' or 'gold prices'"
-                    return response
-                else:
-                    return "📊 Market data not available at the moment. Please try again later."
+                # Use the comprehensive market analysis function
+                response = financial_analyzer.get_comprehensive_market_analysis()
+                return response
             except Exception as e:
-                logger.error(f"Error fetching market analysis: {e}")
-                return "❌ Unable to fetch market analysis right now. Please try again later."
+                logger.error(f"Error fetching comprehensive market analysis: {e}")
+                # Fallback to basic market data
+                try:
+                    market_data = financial_analyzer.get_market_data()
+                    if market_data:
+                        response = "📊 **MARKET ANALYSIS** (Basic)\n\n"
+                        
+                        # Add major FX pairs
+                        response += "**💱 Major FX Pairs:**\n"
+                        fx_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF']
+                        for pair in fx_pairs:
+                            if pair in market_data:
+                                data = market_data[pair]
+                                price = data.get('price', 0)
+                                change_pct = data.get('change_percent', 0)
+                                trend = "📈" if change_pct >= 0 else "📉"
+                                response += f"{trend} {pair}: {price:.4f} ({change_pct:+.2f}%)\n"
+                        
+                        response += "\n💡 **Want specific insights?** Ask for 'trading insights' or 'gold prices'"
+                        return response
+                    else:
+                        return "📊 Market data not available at the moment. Please try again later."
+                except Exception as fallback_e:
+                    logger.error(f"Fallback market analysis also failed: {fallback_e}")
+                    return "❌ Unable to fetch market analysis right now. Please try again later."
         else:
             return "📊 Market analysis service is currently unavailable."
     

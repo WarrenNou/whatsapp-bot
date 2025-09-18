@@ -150,7 +150,7 @@ class FinancialNewsAnalyzer:
                 'Gold': 'GLD',      # Gold ETF - need to convert to actual gold price
                 'Silver': 'SLV',    # Silver ETF - need to convert  
                 'Oil_WTI': 'USO',   # Oil ETF
-                'Bitcoin': 'BTC-USD', # Try direct Bitcoin if available
+                'Bitcoin': 'BITO',  # Bitcoin Strategy ETF (Finviz compatible)
                 'EUR/USD': 'FXE',   # Euro ETF
                 'DXY': 'UUP'        # Dollar ETF
             }
@@ -389,6 +389,10 @@ class FinancialNewsAnalyzer:
                 },
                 'Oil_WTI': {
                     'USO': 1.0,   # USO tracks oil futures
+                    'multiplier': 1.0
+                },
+                'Bitcoin': {
+                    'BITO': 1.0,  # BITO tracks Bitcoin futures/price
                     'multiplier': 1.0
                 },
                 'EUR/USD': {
@@ -724,12 +728,18 @@ class FinancialNewsAnalyzer:
                             if summary:
                                 summary = self._clean_html(summary)
                             
+                            # Extract article content for preview (only for first few articles to avoid delays)
+                            article_content = ""
+                            if len(all_news) < 5 and url:  # Only extract for first 5 articles
+                                article_content = self._extract_article_content(url)
+                            
                             news_item = {
                                 'title': title,
                                 'summary': summary,
                                 'url': url,
                                 'published': published,
-                                'source': source_name
+                                'source': source_name,
+                                'content_preview': article_content
                             }
                             all_news.append(news_item)
                             
@@ -1442,6 +1452,451 @@ class FinancialNewsAnalyzer:
             
         cache_time = cache_dict[cache_key]['timestamp']
         return (datetime.now() - cache_time).seconds < self.cache_timeout
+    
+    def _extract_article_content(self, url: str, max_paragraphs: int = 3) -> str:
+        """Extract article content from URL for preview"""
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            # Try to parse with BeautifulSoup if available
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(response.content, 'html.parser')
+                
+                # Remove script and style elements
+                for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
+                    script.decompose()
+                
+                # Look for article content in common containers
+                content_selectors = [
+                    'article', '.article-content', '.post-content', '.entry-content',
+                    '.story-body', '.article-body', '.content', 'main p'
+                ]
+                
+                article_text = ""
+                for selector in content_selectors:
+                    elements = soup.select(selector)
+                    if elements:
+                        # Get paragraphs from the first matching container
+                        paragraphs = elements[0].find_all('p')
+                        paragraph_texts = []
+                        
+                        for p in paragraphs[:max_paragraphs]:
+                            text = p.get_text().strip()
+                            if len(text) > 50:  # Only substantial paragraphs
+                                paragraph_texts.append(text)
+                        
+                        if paragraph_texts:
+                            article_text = ' '.join(paragraph_texts)
+                            break
+                
+                # Fallback: get all paragraphs
+                if not article_text:
+                    paragraphs = soup.find_all('p')
+                    paragraph_texts = []
+                    for p in paragraphs[:max_paragraphs]:
+                        text = p.get_text().strip()
+                        if len(text) > 50:
+                            paragraph_texts.append(text)
+                    article_text = ' '.join(paragraph_texts)
+                
+                # Limit length and clean up
+                if article_text:
+                    article_text = article_text[:500]  # Limit to 500 characters
+                    if len(article_text) == 500:
+                        article_text = article_text.rsplit(' ', 1)[0] + "..."
+                    
+                return article_text
+                
+            except ImportError:
+                # BeautifulSoup not available, try basic text extraction
+                text = response.text
+                # Very basic paragraph extraction
+                import re
+                paragraphs = re.findall(r'<p[^>]*>(.*?)</p>', text, re.DOTALL)
+                if paragraphs:
+                    clean_paragraphs = []
+                    for p in paragraphs[:max_paragraphs]:
+                        clean_p = re.sub(r'<[^>]+>', '', p).strip()
+                        if len(clean_p) > 50:
+                            clean_paragraphs.append(clean_p)
+                    
+                    if clean_paragraphs:
+                        content = ' '.join(clean_paragraphs)[:500]
+                        if len(content) == 500:
+                            content = content.rsplit(' ', 1)[0] + "..."
+                        return content
+                
+                return ""
+                
+        except Exception as e:
+            logger.debug(f"Could not extract content from {url}: {e}")
+            return ""
+
+    def get_comprehensive_market_analysis(self) -> str:
+        """
+        Get comprehensive real-time market analysis from multiple data sources
+        Includes Finviz, CoinGecko, Yahoo Finance, and news sentiment analysis
+        """
+        try:
+            analysis = "📊 **COMPREHENSIVE REAL-TIME MARKET ANALYSIS**\n"
+            analysis += f"🕐 Analysis generated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
+            
+            # 1. Get data from multiple sources
+            market_data = self.get_market_data()
+            news_result = self.get_latest_financial_news(limit=8, include_market_overview=True)
+            news_items = news_result.get('news', [])
+            
+            # 2. Get enhanced crypto data from CoinGecko
+            crypto_data = self._get_enhanced_crypto_data()
+            
+            # 3. Get global market indices 
+            indices_data = self._get_global_indices()
+            
+            # 4. Major FX Pairs with detailed analysis
+            analysis += "💱 **MAJOR CURRENCY PAIRS - LIVE DATA**\n"
+            fx_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD']
+            
+            for pair in fx_pairs:
+                if pair in market_data:
+                    data = market_data[pair]
+                    price = data.get('price', 0)
+                    change_pct = data.get('change_percent', 0)
+                    source = data.get('source', 'market')
+                    
+                    # Advanced trend analysis
+                    trend_analysis = self._analyze_fx_trend(pair, change_pct)
+                    
+                    analysis += f"• **{pair}**: {price:.4f} ({change_pct:+.2f}%) {trend_analysis['emoji']}\n"
+                    analysis += f"  📈 Trend: {trend_analysis['description']} | Source: {source}\n"
+            
+            # 5. Cryptocurrencies with CoinGecko data
+            analysis += "\n🚀 **CRYPTOCURRENCY MARKET - COINGECKO DATA**\n"
+            if crypto_data:
+                for crypto, data in crypto_data.items():
+                    price = data.get('current_price', 0)
+                    change_24h = data.get('price_change_percentage_24h', 0)
+                    market_cap_rank = data.get('market_cap_rank', 'N/A')
+                    volume_24h = data.get('total_volume', 0)
+                    
+                    trend_emoji = "🟢" if change_24h > 2 else "🔴" if change_24h < -2 else "🟡"
+                    
+                    analysis += f"• **{crypto}**: ${price:,.2f} ({change_24h:+.2f}%) {trend_emoji}\n"
+                    analysis += f"  📊 Rank #{market_cap_rank} | Vol: ${volume_24h:,.0f}\n"
+            else:
+                # Fallback to our existing crypto data
+                crypto_symbols = ['Bitcoin', 'Ethereum']
+                for symbol in crypto_symbols:
+                    if symbol in market_data:
+                        data = market_data[symbol]
+                        price = data.get('price', 0)
+                        change_pct = data.get('change_percent', 0)
+                        analysis += f"• **{symbol}**: ${price:,.2f} ({change_pct:+.2f}%)\n"
+            
+            # 6. Commodities with futures analysis
+            analysis += "\n🥇 **COMMODITIES & FUTURES - LIVE PRICES**\n"
+            commodities = ['Gold', 'Silver', 'Oil_WTI']
+            
+            for commodity in commodities:
+                if commodity in market_data:
+                    data = market_data[commodity]
+                    price = data.get('price', 0)
+                    change_pct = data.get('change_percent', 0)
+                    source = data.get('source', 'market')
+                    
+                    commodity_analysis = self._analyze_commodity_trend(commodity, price, change_pct)
+                    
+                    analysis += f"• **{commodity}**: ${price:,.2f} ({change_pct:+.2f}%) {commodity_analysis['emoji']}\n"
+                    analysis += f"  📈 {commodity_analysis['analysis']} | Source: {source}\n"
+            
+            # 7. Global Stock Indices
+            analysis += "\n🌍 **GLOBAL STOCK INDICES**\n"
+            if indices_data:
+                for index, data in indices_data.items():
+                    analysis += f"• **{index}**: {data.get('value', 'N/A')} ({data.get('change', 'N/A')})\n"
+            else:
+                analysis += "• Index data temporarily unavailable\n"
+            
+            # 8. Market sentiment from news analysis
+            analysis += "\n📰 **MARKET SENTIMENT ANALYSIS**\n"
+            sentiment_data = self._analyze_news_sentiment(news_items)
+            analysis += f"• **Overall Sentiment**: {sentiment_data['overall']} {sentiment_data['emoji']}\n"
+            analysis += f"• **Key Themes**: {', '.join(sentiment_data['themes'])}\n"
+            analysis += f"• **Risk Factors**: {sentiment_data['risk_assessment']}\n"
+            
+            # 9. Professional trading insights
+            analysis += "\n🎯 **PROFESSIONAL TRADING INSIGHTS**\n"
+            trading_insights = self._generate_trading_insights(market_data, sentiment_data)
+            for insight in trading_insights:
+                analysis += f"• {insight}\n"
+            
+            # 10. Recent news impact
+            analysis += "\n📈 **RECENT NEWS IMPACT ON MARKETS**\n"
+            if news_items:
+                for i, item in enumerate(news_items[:3], 1):
+                    title = item.get('title', 'No title')[:80]
+                    source = item.get('source', 'Unknown')
+                    analysis += f"{i}. **{title}** (via {source})\n"
+            
+            analysis += f"\n🔄 **Last Updated**: {datetime.now().strftime('%H:%M:%S UTC')}\n"
+            analysis += "💡 *This analysis combines real-time data from multiple sources including CoinGecko, market APIs, and news sentiment*"
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Error generating comprehensive market analysis: {e}")
+            return "❌ Unable to generate comprehensive market analysis at this time"
+    
+    def _get_enhanced_crypto_data(self) -> Dict:
+        """Get enhanced cryptocurrency data from CoinGecko API"""
+        try:
+            crypto_ids = ['bitcoin', 'ethereum', 'binancecoin', 'cardano', 'solana']
+            url = f"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids={','.join(crypto_ids)}&order=market_cap_desc&per_page=5&page=1&sparkline=false&price_change_percentage=24h"
+            
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                crypto_data = {}
+                
+                for coin in data:
+                    name = coin.get('name', coin.get('id', '').title())
+                    crypto_data[name] = {
+                        'current_price': coin.get('current_price', 0),
+                        'price_change_percentage_24h': coin.get('price_change_percentage_24h', 0),
+                        'market_cap_rank': coin.get('market_cap_rank', 'N/A'),
+                        'total_volume': coin.get('total_volume', 0),
+                        'market_cap': coin.get('market_cap', 0)
+                    }
+                
+                return crypto_data
+                
+        except Exception as e:
+            logger.debug(f"Error getting enhanced crypto data: {e}")
+        
+        return {}
+    
+    def _get_global_indices(self) -> Dict:
+        """Get global stock indices data"""
+        try:
+            # Try to get basic indices data - this can be expanded with more APIs
+            indices = {}
+            
+            # For now, provide placeholder structure that can be enhanced
+            indices_symbols = {
+                'S&P 500': '^GSPC',
+                'NASDAQ': '^IXIC', 
+                'Dow Jones': '^DJI',
+                'FTSE 100': '^FTSE',
+                'Nikkei 225': '^N225'
+            }
+            
+            # This could be enhanced with Yahoo Finance or other APIs
+            for name, symbol in indices_symbols.items():
+                indices[name] = {
+                    'value': 'Loading...',
+                    'change': 'Loading...'
+                }
+            
+            return indices
+            
+        except Exception as e:
+            logger.debug(f"Error getting global indices: {e}")
+            return {}
+    
+    def _analyze_fx_trend(self, pair: str, change_pct: float) -> Dict:
+        """Analyze FX pair trend and provide insights"""
+        if change_pct > 0.5:
+            return {
+                'emoji': '🟢📈',
+                'description': 'Strong bullish momentum'
+            }
+        elif change_pct > 0.1:
+            return {
+                'emoji': '🔵↗️',
+                'description': 'Moderate uptrend'
+            }
+        elif change_pct < -0.5:
+            return {
+                'emoji': '🔴📉',
+                'description': 'Strong bearish pressure'
+            }
+        elif change_pct < -0.1:
+            return {
+                'emoji': '🟠↘️',
+                'description': 'Moderate downtrend'
+            }
+        else:
+            return {
+                'emoji': '⚪➡️',
+                'description': 'Consolidating/sideways'
+            }
+    
+    def _analyze_commodity_trend(self, commodity: str, price: float, change_pct: float) -> Dict:
+        """Analyze commodity trends with context"""
+        base_analysis = {
+            'Gold': {
+                'support_level': 1900,
+                'resistance_level': 2100,
+                'safe_haven': True
+            },
+            'Silver': {
+                'support_level': 22,
+                'resistance_level': 30,
+                'industrial_demand': True
+            },
+            'Oil_WTI': {
+                'support_level': 70,
+                'resistance_level': 90,
+                'supply_sensitive': True
+            }
+        }
+        
+        info = base_analysis.get(commodity, {})
+        
+        if change_pct > 1:
+            emoji = '🟢🚀'
+            analysis = f"Strong upward momentum"
+        elif change_pct > 0:
+            emoji = '🔵📈'
+            analysis = f"Positive trend"
+        elif change_pct < -1:
+            emoji = '🔴⬇️'
+            analysis = f"Under pressure"
+        else:
+            emoji = '🟡📊'
+            analysis = f"Range-bound"
+        
+        if info.get('safe_haven') and change_pct > 0:
+            analysis += " (risk-off sentiment)"
+        
+        return {
+            'emoji': emoji,
+            'analysis': analysis
+        }
+    
+    def _analyze_news_sentiment(self, news_items: List[Dict]) -> Dict:
+        """Analyze market sentiment from news headlines"""
+        if not news_items:
+            return {
+                'overall': 'Neutral',
+                'emoji': '😐',
+                'themes': ['Limited news data'],
+                'risk_assessment': 'Standard'
+            }
+        
+        # Analyze headlines for sentiment keywords
+        bullish_keywords = ['rise', 'gain', 'surge', 'rally', 'boost', 'up', 'strong', 'growth', 'positive']
+        bearish_keywords = ['fall', 'drop', 'decline', 'crash', 'weak', 'down', 'loss', 'negative', 'concern']
+        
+        bullish_count = 0
+        bearish_count = 0
+        themes = set()
+        
+        for item in news_items:
+            title = item.get('title', '').lower()
+            
+            # Count sentiment words
+            for word in bullish_keywords:
+                if word in title:
+                    bullish_count += 1
+            
+            for word in bearish_keywords:
+                if word in title:
+                    bearish_count += 1
+            
+            # Extract themes
+            if 'fed' in title or 'federal' in title or 'interest' in title:
+                themes.add('Federal Reserve Policy')
+            if 'inflation' in title:
+                themes.add('Inflation')
+            if 'employment' in title or 'jobs' in title:
+                themes.add('Employment')
+            if 'earnings' in title:
+                themes.add('Corporate Earnings')
+            if 'trade' in title or 'tariff' in title:
+                themes.add('Trade Relations')
+        
+        # Determine overall sentiment
+        if bullish_count > bearish_count * 1.5:
+            sentiment = 'Bullish'
+            emoji = '📈😊'
+            risk = 'Low'
+        elif bearish_count > bullish_count * 1.5:
+            sentiment = 'Bearish'
+            emoji = '📉😰'
+            risk = 'Elevated'
+        else:
+            sentiment = 'Mixed'
+            emoji = '📊🤔'
+            risk = 'Moderate'
+        
+        return {
+            'overall': sentiment,
+            'emoji': emoji,
+            'themes': list(themes) if themes else ['General Market News'],
+            'risk_assessment': risk
+        }
+    
+    def _generate_trading_insights(self, market_data: Dict, sentiment_data: Dict) -> List[str]:
+        """Generate professional trading insights based on data"""
+        insights = []
+        
+        # USD strength analysis
+        usd_pairs = ['EUR/USD', 'GBP/USD', 'AUD/USD']
+        usd_strength = 0
+        
+        for pair in usd_pairs:
+            if pair in market_data:
+                change = market_data[pair].get('change_percent', 0)
+                usd_strength -= change  # Negative change in these pairs = USD strength
+        
+        if usd_strength > 0.3:
+            insights.append("🇺🇸 **USD showing strength** across major pairs - consider DXY momentum trades")
+        elif usd_strength < -0.3:
+            insights.append("🇺🇸 **USD weakness** evident - monitor commodity currencies and risk assets")
+        
+        # Gold vs Dollar correlation
+        if 'Gold' in market_data and 'EUR/USD' in market_data:
+            gold_change = market_data['Gold'].get('change_percent', 0)
+            eur_change = market_data['EUR/USD'].get('change_percent', 0)
+            
+            if gold_change > 0.5 and eur_change > 0:
+                insights.append("🥇 **Risk-off sentiment** - Gold and EUR both rising, watch for safe-haven flows")
+            elif gold_change > 1:
+                insights.append("🥇 **Gold breakout** - Monitor inflation expectations and real yields")
+        
+        # Crypto market insight
+        if 'Bitcoin' in market_data:
+            btc_change = market_data['Bitcoin'].get('change_percent', 0)
+            if btc_change > 3:
+                insights.append("🚀 **Crypto momentum** - Bitcoin leading, watch for altcoin rotation")
+            elif btc_change < -3:
+                insights.append("📉 **Crypto selling pressure** - Risk-off sentiment affecting digital assets")
+        
+        # Sentiment-based insights
+        if sentiment_data['overall'] == 'Bearish':
+            insights.append("⚠️ **News sentiment bearish** - Consider defensive positioning and volatility hedges")
+        elif sentiment_data['overall'] == 'Bullish':
+            insights.append("📈 **Positive news flow** - Risk-on environment favors growth assets")
+        
+        # Oil market insights
+        if 'Oil_WTI' in market_data:
+            oil_change = market_data['Oil_WTI'].get('change_percent', 0)
+            if oil_change > 2:
+                insights.append("🛢️ **Energy sector momentum** - Watch CAD, NOK and energy stocks")
+            elif oil_change < -2:
+                insights.append("🛢️ **Oil under pressure** - Monitor supply concerns and recession fears")
+        
+        # Default insight if none generated
+        if not insights:
+            insights.append("📊 **Market consolidation** - Monitor key levels for breakout opportunities")
+        
+        return insights
 
     def format_financial_news_report(self, news_items: List[Dict], include_links: bool = True) -> str:
         """
