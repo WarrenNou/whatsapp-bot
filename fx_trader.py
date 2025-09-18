@@ -27,14 +27,14 @@ class FXTrader:
             'XOF_EUR': 0.0,  # Euro
             'last_updated': ''
         }
-        self.usd_markup_percentage = 8  # 8% markup on USD rates
+        self.usd_markup_percentage = 9  # 9% markup on USD rates
         self.usdt_markup_percentage = 8.5 # 8.5% markup on USDT rates
         self.aed_markup_percentage = 8.5  # 8.5% markup on AED rates
         self.xof_markup_percentage = 4  # 3.5% markup on XOF rates
         # New currency markups
         self.xaf_cny_markup_percentage = 9.5  # 9.5% markup on XAF/CNY rates
         self.xof_cny_markup_percentage = 5.0  # 5% markup on XOF/CNY rates
-        self.xaf_eur_markup_percentage = 7.0  # 6% markup on XAF/EUR rates
+        self.xaf_eur_markup_percentage = 9.0  # 6% markup on XAF/EUR rates
         self.xof_eur_markup_percentage = 4.0  # 4% markup on XOF/EUR rates
         # Yahoo Finance API endpoints
         self.yahoo_finance_url = "https://query1.finance.yahoo.com/v8/finance/chart"
@@ -241,19 +241,13 @@ class FXTrader:
             xaf_eur_markup_multiplier = 1 + (self.xaf_eur_markup_percentage / 100)
             xof_eur_markup_multiplier = 1 + (self.xof_eur_markup_percentage / 100)
             
-            # XAF/USD with 8% markup (how much XAF to buy 1 USD from us)
+            # XAF/USD with 9% markup (how much XAF to buy 1 USD from us)
             calculated_usd_rate = round(usd_xaf_rate * usd_markup_multiplier, 2)
-            self.base_rates['XAF_USD'] = max(calculated_usd_rate, 604.5)  # Minimum floor of 604.5
+            self.base_rates['XAF_USD'] = calculated_usd_rate  # No minimum floor limit
             
-            # XAF/USDT with 8% markup 
+            # XAF/USDT with 8.5% markup 
             calculated_usdt_rate = round(usd_xaf_rate * usdt_markup_multiplier, 2)
-            self.base_rates['XAF_USDT'] = max(calculated_usdt_rate, 604.5)  # Minimum floor of 604.5
-            
-            # Log if floor rate is applied
-            if calculated_usd_rate < 604.5:
-                logger.info(f"USD/XAF floor rate applied: {calculated_usd_rate} → 604.5")
-            if calculated_usdt_rate < 604.5:
-                logger.info(f"USDT/XAF floor rate applied: {calculated_usdt_rate} → 604.5")
+            self.base_rates['XAF_USDT'] = calculated_usdt_rate  # No minimum floor limit
             
             # XAF/AED with 8.5% markup
             # First convert: AED -> USD -> XAF, then add markup

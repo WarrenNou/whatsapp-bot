@@ -1066,7 +1066,7 @@ def generate_ai_response_with_action_parsing(
         - Guide clients through actual trading process when they want to trade
         
         EVA Fx Trading Information:
-        - XAF rates: 8% USD, 8.5% USDT, 8.5% AED, 9.5% CNY, 6% EUR
+        - XAF rates: 9% USD, 8.5% USDT, 8.5% AED, 9.5% CNY, 6% EUR
         - XOF rates: 3.5% USD/USDT/AED, 5% CNY, 4% EUR (better rates for West Africa)
         - Rates sourced from live international market data for accuracy
         - Operating 24/7 for client convenience
