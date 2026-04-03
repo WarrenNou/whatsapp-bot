@@ -24,7 +24,10 @@ class OpenClawClient:
         self.gateway_url = os.getenv('OPENCLAW_GATEWAY_URL', '')
         self.api_key = os.getenv('OPENCLAW_API_KEY', '')
         self.enabled = bool(self.gateway_url)
-        self.timeout = int(os.getenv('OPENCLAW_TIMEOUT', '30'))
+        try:
+            self.timeout = int(os.getenv('OPENCLAW_TIMEOUT', '30'))
+        except (ValueError, TypeError):
+            self.timeout = 30
         self._available = None
         self._last_health_check = 0
         self._health_check_interval = 60  # Re-check every 60 seconds

@@ -7,6 +7,7 @@ Sources include CoinGecko (crypto), FRED (macro), ECB (FX), and open stock APIs.
 import requests
 import logging
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
@@ -83,10 +84,10 @@ class MarketDataAggregator:
         formatted = {}
         for coin_id, data in raw.items():
             formatted[coin_id] = {
-                'price_usd': data.get('usd', 0),
-                'change_24h_pct': round(data.get('usd_24h_change', 0), 2),
-                'market_cap_usd': data.get('usd_market_cap', 0),
-                'volume_24h_usd': data.get('usd_24h_vol', 0),
+                'price_usd': data.get('usd') or 0,
+                'change_24h_pct': round(data.get('usd_24h_change') or 0, 2),
+                'market_cap_usd': data.get('usd_market_cap') or 0,
+                'volume_24h_usd': data.get('usd_24h_vol') or 0,
             }
         return {
             'coins': formatted,
@@ -142,7 +143,6 @@ class MarketDataAggregator:
         try:
             resp = requests.get(self.ecb_rates_url, timeout=10)
             if resp.status_code == 200:
-                import xml.etree.ElementTree as ET
                 root = ET.fromstring(resp.content)
                 ns = {'gesmes': 'http://www.gesmes.org/xml/2002-08-01',
                       'eurofxref': 'http://www.ecb.int/vocabulary/2002-08-01/eurofxref'}

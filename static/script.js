@@ -304,7 +304,7 @@ async function loadMarketTicker() {
             const ticker = names[id] || id.toUpperCase();
             const price = info.price_usd >= 1
                 ? '$' + info.price_usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
-                : '$' + info.price_usd.toFixed(4);
+                : '$' + info.price_usd.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4});
             const change = info.change_24h_pct;
             const cls = change >= 0 ? 'ticker-up' : 'ticker-down';
             const sign = change >= 0 ? '+' : '';
