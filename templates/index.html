@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EVA Fx - Chat Support</title>
+    <title>EVA Fx - AI Trading Assistant</title>
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
@@ -25,7 +25,7 @@
             <i class="fas fa-exchange-alt logo-icon"></i>
             <div class="header-text">
               <h1>EVA Fx Trading</h1>
-              <p>Premium Currency Exchange</p>
+              <p>AI-Powered Currency Exchange</p>
             </div>
           </div>
           <div class="header-right">
@@ -49,11 +49,18 @@
                 <span>AI Bot</span>
               </a>
             </div>
-            <div class="status-indicator online">
+            <div class="status-indicator online" id="connection-status">
               <span class="status-dot"></span>
               <span>Online</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Market Ticker Bar -->
+      <div class="market-ticker" id="market-ticker">
+        <div class="ticker-content" id="ticker-content">
+          <span class="ticker-item">📊 Loading market data...</span>
         </div>
       </div>
 
@@ -75,15 +82,17 @@
               <ul>
                 <li>📊 Current exchange rates</li>
                 <li>💰 Currency calculations</li>
-                <li>� Latest financial news</li>
-                <li>📈 Market analysis & insights</li>
+                <li>📰 Latest financial news</li>
+                <li>📈 Market analysis &amp; insights</li>
                 <li>🥇 Gold and commodities data</li>
-                <li>�🔄 Trading processes</li>
+                <li>🪙 Crypto market prices</li>
+                <li>🏦 Official ECB exchange rates</li>
+                <li>🌍 Global stock market indices</li>
                 <li>❓ Answer your questions</li>
               </ul>
               <p>
-                <strong>Try asking:</strong> "rates", "100 USD", "financial
-                news", "market analysis", or "gold prices"
+                <strong>Try asking:</strong> "rates", "100 USD", "crypto",
+                "indices", "ecb rates", "full market", or "gold prices"
               </p>
               <br />
               <div class="telegram-links-welcome">
@@ -133,14 +142,20 @@
         <button class="quick-btn" onclick="sendQuickMessage('gold prices')">
           <i class="fas fa-coins"></i> Gold Prices
         </button>
-        <button class="quick-btn" onclick="sendQuickMessage('100 USD')">
-          <i class="fas fa-calculator"></i> Calculate 100 USD
+        <button class="quick-btn" onclick="sendQuickMessage('crypto')">
+          <i class="fab fa-bitcoin"></i> Crypto
+        </button>
+        <button class="quick-btn" onclick="sendQuickMessage('indices')">
+          <i class="fas fa-globe"></i> Indices
+        </button>
+        <button class="quick-btn" onclick="sendQuickMessage('full market')">
+          <i class="fas fa-chart-area"></i> Full Market
         </button>
         <button
           class="quick-btn"
           onclick="sendQuickMessage('trading insights')"
         >
-          <i class="fas fa-lightbulb"></i> Trading Insights
+          <i class="fas fa-lightbulb"></i> Insights
         </button>
         <div class="telegram-quick-actions">
           <a
@@ -148,7 +163,7 @@
             target="_blank"
             class="quick-btn telegram-quick-btn"
           >
-            <i class="fab fa-telegram"></i> Join Channel
+            <i class="fab fa-telegram"></i> Channel
           </a>
           <a
             href="https://t.me/evafx_assistant_bot"
