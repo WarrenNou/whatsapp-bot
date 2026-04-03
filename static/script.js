@@ -282,26 +282,28 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(loadMarketTicker, 300000);
 });
 
-// Market ticker loader
+// Market ticker loader — pulls from all three data sources via /api/market-summary
 async function loadMarketTicker() {
     const tickerContent = document.getElementById('ticker-content');
     if (!tickerContent) return;
 
     try {
-        const resp = await fetch('/api/crypto');
+        const resp = await fetch('/api/market-summary');
         if (!resp.ok) throw new Error('fetch failed');
-        const data = await resp.json();
-        const coins = (data.data && data.data.coins) || {};
+        const result = await resp.json();
+        const data = result.data || {};
 
-        const names = {
+        const items = [];
+
+        // --- Crypto prices ---
+        const coins = data.crypto || {};
+        const cryptoNames = {
             bitcoin: 'BTC', ethereum: 'ETH', tether: 'USDT',
             binancecoin: 'BNB', solana: 'SOL', ripple: 'XRP',
             cardano: 'ADA', dogecoin: 'DOGE'
         };
-
-        let items = [];
         for (const [id, info] of Object.entries(coins)) {
-            const ticker = names[id] || id.toUpperCase();
+            const ticker = cryptoNames[id] || id.toUpperCase();
             const price = info.price_usd >= 1
                 ? '$' + info.price_usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
                 : '$' + info.price_usd.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4});
@@ -309,14 +311,38 @@ async function loadMarketTicker() {
             const cls = change >= 0 ? 'ticker-up' : 'ticker-down';
             const sign = change >= 0 ? '+' : '';
             items.push(
-                `<span class="ticker-item"><span class="ticker-label">${ticker}</span> <span class="ticker-price">${price}</span> <span class="${cls}">${sign}${change.toFixed(2)}%</span></span>`
+                `<span class="ticker-item"><span class="ticker-label">🪙 ${ticker}</span> <span class="ticker-price">${price}</span> <span class="${cls}">${sign}${change.toFixed(2)}%</span></span>`
+            );
+        }
+
+        // --- ECB FX rates (EUR-based) ---
+        // key_pairs filtered server-side in /api/market-summary; flags here are display-only
+        const fxRates = data.fx_rates || {};
+        const fxFlags = { USD: '🇺🇸', GBP: '🇬🇧', JPY: '🇯🇵', CHF: '🇨🇭', CNY: '🇨🇳', AUD: '🇦🇺', CAD: '🇨🇦' };
+        for (const [currency, rate] of Object.entries(fxRates)) {
+            const flag = fxFlags[currency] || '';
+            items.push(
+                `<span class="ticker-item"><span class="ticker-label">${flag} EUR/${currency}</span> <span class="ticker-price">${Number(rate).toFixed(4)}</span></span>`
+            );
+        }
+
+        // --- Global indices ---
+        // Index names come from market_data_sources.get_global_indices(); flags are display-only
+        const indices = data.indices || {};
+        const indexFlags = { 'S&P 500': '🇺🇸', 'Dow Jones': '🇺🇸', 'NASDAQ': '🇺🇸', 'FTSE 100': '🇬🇧', 'DAX': '🇩🇪', 'Nikkei 225': '🇯🇵' };
+        for (const [name, info] of Object.entries(indices)) {
+            const flag = indexFlags[name] || '📈';
+            const change = info.change_pct;
+            const cls = change >= 0 ? 'ticker-up' : 'ticker-down';
+            const sign = change >= 0 ? '+' : '';
+            items.push(
+                `<span class="ticker-item"><span class="ticker-label">${flag} ${name}</span> <span class="ticker-price">${info.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span> <span class="${cls}">${sign}${change.toFixed(2)}%</span></span>`
             );
         }
 
         if (items.length > 0) {
             // Duplicate for seamless infinite scroll
-            const html = items.join('') + items.join('');
-            tickerContent.innerHTML = html;
+            tickerContent.innerHTML = items.join('') + items.join('');
         }
     } catch (e) {
         // Silently keep the loading text or previous data
