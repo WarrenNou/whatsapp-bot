@@ -8,3 +8,8 @@ class Config:
     TWILIO_WHATSAPP_NUMBER = os.getenv('TWILIO_WHATSAPP_NUMBER')
     TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
     TELEGRAM_WEBHOOK_URL = os.getenv('TELEGRAM_WEBHOOK_URL')
+
+    # OpenClaw Integration (https://github.com/openclaw/openclaw)
+    OPENCLAW_GATEWAY_URL = os.getenv('OPENCLAW_GATEWAY_URL', '')
+    OPENCLAW_API_KEY = os.getenv('OPENCLAW_API_KEY', '')
+    OPENCLAW_TIMEOUT = int(os.getenv('OPENCLAW_TIMEOUT', '30'))

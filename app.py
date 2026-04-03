@@ -22,6 +22,8 @@ from fx_trader import fx_trader
 from financial_news import FinancialNewsAnalyzer
 from enhanced_scheduler import initialize_enhanced_scheduler, enhanced_scheduler
 from external_keepalive import external_keep_alive, print_setup_instructions
+from openclaw_integration import openclaw_client
+from market_data_sources import market_data
 
 # Load environment variables
 load_dotenv()
@@ -1461,6 +1463,38 @@ def handle_fx_commands(message: str) -> Optional[str]:
         else:
             return "💡 Trading insights service is currently unavailable."
     
+    # Handle crypto market requests (CoinGecko - free)
+    if any(keyword in message_lower for keyword in ['crypto', 'bitcoin', 'ethereum', 'crypto prices', 'crypto market']):
+        try:
+            return market_data.get_crypto_market_summary()
+        except Exception as e:
+            logger.error(f"Error fetching crypto data: {e}")
+            return "❌ Unable to fetch crypto data right now. Please try again later."
+
+    # Handle ECB rates requests
+    if any(keyword in message_lower for keyword in ['ecb rates', 'ecb', 'central bank rates', 'official rates']):
+        try:
+            return market_data.get_ecb_rates_summary()
+        except Exception as e:
+            logger.error(f"Error fetching ECB rates: {e}")
+            return "❌ Unable to fetch ECB rates right now. Please try again later."
+
+    # Handle global indices requests
+    if any(keyword in message_lower for keyword in ['indices', 'stock market', 'global markets', 'world markets', 'sp500', 's&p']):
+        try:
+            return market_data.get_global_indices_summary()
+        except Exception as e:
+            logger.error(f"Error fetching global indices: {e}")
+            return "❌ Unable to fetch global indices right now. Please try again later."
+
+    # Handle full market overview
+    if any(keyword in message_lower for keyword in ['full market', 'complete market', 'all markets', 'market report']):
+        try:
+            return market_data.get_full_market_overview()
+        except Exception as e:
+            logger.error(f"Error fetching market overview: {e}")
+            return "❌ Unable to fetch full market overview right now. Please try again later."
+
     # Check for rate requests - improved detection
     if any(keyword in message_lower for keyword in ['rate', 'rates']):
         return fx_trader.get_daily_rates()
@@ -1575,6 +1609,16 @@ Features:
 • "200 EUR" - Calculate XAF/XOF equivalent for Euro
 • "1000 USDT" - Calculate XAF/XOF equivalent for USDT
 
+**Market Data (Free Sources):**
+• "crypto" - Live crypto prices (CoinGecko)
+• "ecb rates" - Official ECB exchange rates
+• "indices" - Global stock market indices
+• "full market" - Comprehensive market overview
+• "financial news" - Latest market headlines
+• "market analysis" - In-depth market analysis
+• "gold prices" - Gold & commodities data
+• "trading insights" - AI-powered trading insights
+
 **Supported Currencies:**
 • USD (US Dollar) to XAF/XOF
 • AED (UAE Dirham) to XAF/XOF
@@ -1590,6 +1634,7 @@ Features:
 • Real-time calculations
 • Daily rate broadcasts at 9AM, 3PM, 7PM Gulf Time
 • Global payment management (China, Europe, Africa)
+• OpenClaw AI integration for enhanced responses
 
 📞 **Contact EVA Fx:** +1 (415) 523-8886
 Send "rates" to get started! 📈
@@ -1699,6 +1744,24 @@ def chat_api():
         
         # Handle other commands or use AI
         # You can add more command handling here similar to the webhook
+        
+        # Try OpenClaw Gateway first if available
+        if openclaw_client.is_available:
+            try:
+                oc_result = openclaw_client.send_message(
+                    message=user_message,
+                    conversation_id=session_id,
+                    channel="web"
+                )
+                if oc_result and oc_result.get('response'):
+                    return jsonify({
+                        'message': oc_result['response'],
+                        'session_id': session_id,
+                        'source': 'openclaw',
+                        'timestamp': datetime.now().isoformat()
+                    })
+            except Exception as e:
+                logger.warning(f"OpenClaw fallback to OpenAI: {e}")
         
         # Default to AI response
         if openai_client:
@@ -1937,17 +2000,21 @@ def health_check() -> Dict:
             "service": "evocash-fx-trading-bot",
             "status": "ok",
             "timestamp": datetime.now(pytz.utc).isoformat(),
-            "version": "3.0.0",
+            "version": "3.1.0",
             "features": [
                 "fx-trading",
                 "daily-broadcasts",
                 "keep-alive",
-                "enhanced-scheduler"
+                "enhanced-scheduler",
+                "openclaw-integration",
+                "multi-source-market-data"
             ],
             "dependencies": {
                 "redis": redis_status,
                 "fx_trader": fx_status,
-                "scheduler": "active"
+                "scheduler": "active",
+                "openclaw": openclaw_client.get_status(),
+                "market_data_sources": ["coingecko", "ecb", "yahoo_finance"]
             },
             "keep_alive": "success"
         }
@@ -2063,6 +2130,70 @@ def get_gold_analysis():
             'error': 'Failed to fetch gold analysis',
             'status': 'error'
         }), 500
+
+@app.route('/api/crypto', methods=['GET'])
+@limiter.limit("10 per minute")
+def get_crypto_data():
+    """Get cryptocurrency market data from CoinGecko (free)"""
+    try:
+        data = market_data.get_crypto_prices()
+        return jsonify({
+            'status': 'success',
+            'data': data,
+            'timestamp': datetime.now(pytz.utc).isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Crypto API error: {e}")
+        return jsonify({
+            'error': 'Failed to fetch crypto data',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/ecb-rates', methods=['GET'])
+@limiter.limit("10 per minute")
+def get_ecb_rates():
+    """Get official ECB exchange rates (free)"""
+    try:
+        data = market_data.get_ecb_rates()
+        return jsonify({
+            'status': 'success',
+            'data': data,
+            'timestamp': datetime.now(pytz.utc).isoformat()
+        })
+    except Exception as e:
+        logger.error(f"ECB rates API error: {e}")
+        return jsonify({
+            'error': 'Failed to fetch ECB rates',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/global-indices', methods=['GET'])
+@limiter.limit("10 per minute")
+def get_global_indices():
+    """Get global stock market indices"""
+    try:
+        data = market_data.get_global_indices()
+        return jsonify({
+            'status': 'success',
+            'data': data,
+            'timestamp': datetime.now(pytz.utc).isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Global indices API error: {e}")
+        return jsonify({
+            'error': 'Failed to fetch global indices',
+            'status': 'error'
+        }), 500
+
+@app.route('/api/openclaw/status', methods=['GET'])
+@limiter.exempt
+def get_openclaw_status():
+    """Get OpenClaw Gateway connection status"""
+    return jsonify({
+        'status': 'success',
+        'openclaw': openclaw_client.get_status(),
+        'timestamp': datetime.now(pytz.utc).isoformat()
+    })
 
 @app.route('/', methods=['GET'])
 def home():

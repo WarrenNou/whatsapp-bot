@@ -276,7 +276,53 @@ function showCopyNotification() {
 // Initialize chat when page loads
 document.addEventListener('DOMContentLoaded', () => {
     window.chatBot = new ChatBot();
+    // Load market ticker data
+    loadMarketTicker();
+    // Refresh ticker every 5 minutes
+    setInterval(loadMarketTicker, 300000);
 });
+
+// Market ticker loader
+async function loadMarketTicker() {
+    const tickerContent = document.getElementById('ticker-content');
+    if (!tickerContent) return;
+
+    try {
+        const resp = await fetch('/api/crypto');
+        if (!resp.ok) throw new Error('fetch failed');
+        const data = await resp.json();
+        const coins = (data.data && data.data.coins) || {};
+
+        const names = {
+            bitcoin: 'BTC', ethereum: 'ETH', tether: 'USDT',
+            binancecoin: 'BNB', solana: 'SOL', ripple: 'XRP',
+            cardano: 'ADA', dogecoin: 'DOGE'
+        };
+
+        let items = [];
+        for (const [id, info] of Object.entries(coins)) {
+            const ticker = names[id] || id.toUpperCase();
+            const price = info.price_usd >= 1
+                ? '$' + info.price_usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                : '$' + info.price_usd.toFixed(4);
+            const change = info.change_24h_pct;
+            const cls = change >= 0 ? 'ticker-up' : 'ticker-down';
+            const sign = change >= 0 ? '+' : '';
+            items.push(
+                `<span class="ticker-item"><span class="ticker-label">${ticker}</span> <span class="ticker-price">${price}</span> <span class="${cls}">${sign}${change.toFixed(2)}%</span></span>`
+            );
+        }
+
+        if (items.length > 0) {
+            // Duplicate for seamless infinite scroll
+            const html = items.join('') + items.join('');
+            tickerContent.innerHTML = html;
+        }
+    } catch (e) {
+        // Silently keep the loading text or previous data
+        console.debug('Ticker update skipped:', e.message);
+    }
+}
 
 // Add some nice effects
 document.addEventListener('DOMContentLoaded', () => {

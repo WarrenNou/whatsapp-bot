@@ -135,6 +135,54 @@ body {
     background: #f8fafc;
 }
 
+/* Market Ticker */
+.market-ticker {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #e2e8f0;
+    padding: 8px 0;
+    overflow: hidden;
+    font-size: 0.8em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ticker-content {
+    display: flex;
+    gap: 24px;
+    animation: ticker-scroll 30s linear infinite;
+    white-space: nowrap;
+    padding: 0 12px;
+}
+
+.ticker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.ticker-item .ticker-up {
+    color: #4ade80;
+}
+
+.ticker-item .ticker-down {
+    color: #f87171;
+}
+
+.ticker-item .ticker-label {
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.ticker-item .ticker-price {
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+@keyframes ticker-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
 .message {
     display: flex;
     margin-bottom: 20px;
