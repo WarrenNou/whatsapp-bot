@@ -1705,6 +1705,79 @@ def parse_direct_command(message: str) -> Tuple[Optional[str], Optional[Dict]]:
     
     return None, None
 
+
+def _build_web_chat_system_prompt() -> str:
+    """
+    Build a comprehensive system prompt for the web chat AI that includes
+    EVA Fx trading knowledge, available commands, and current market context.
+    """
+    # Attempt to get a brief FX rates snapshot to ground the AI in live data.
+    # Capped at 800 chars to stay within the token budget of the system prompt.
+    _FX_CONTEXT_MAX_CHARS = 800
+    fx_context = ""
+    try:
+        fx_rates_text = fx_trader.get_daily_rates()
+        if fx_rates_text:
+            fx_context = "\n\nCurrent EVA Fx Rates (live):\n" + fx_rates_text[:_FX_CONTEXT_MAX_CHARS]
+    except Exception:
+        pass
+
+    # Contact numbers can be overridden via environment variables
+    general_contact = os.getenv('EVA_GENERAL_CONTACT', '+1 (415) 523-8886')
+    trading_contact = os.getenv('EVA_TRADING_CONTACT', '+1 (302) 582-0825')
+
+    return f"""You are EVA Fx - a professional premium currency exchange service specializing in trades between XAF (Central African Franc), XOF (West African Franc) and major international currencies (USD, AED, USDT, CNY, EUR), accessible via the web chat interface.
+
+Primary Functions:
+- Provide real-time exchange rates with markup included
+- Calculate currency conversions for all supported pairs
+- Offer professional trading advice and market insights
+- Handle client inquiries about exchange services
+- Guide clients through the actual trading process when they want to trade
+
+EVA Fx Rate Information:
+- XAF rates: 9% USD, 8.5% USDT, 8.5% AED, 9.5% CNY, 6% EUR
+- XOF rates: 3.5% USD/USDT/AED, 5% CNY, 4% EUR (better rates for West Africa)
+- Rates sourced from live international market data for accuracy
+- Operating 24/7 for client convenience
+- Specializing in African currency exchange with global reach
+
+Available Market Data (users can type these commands or ask naturally):
+- "rates" → Live EVA Fx exchange rates (USD, AED, USDT, CNY, EUR ↔ XAF/XOF)
+- "crypto" or "bitcoin" / "ethereum" → Live cryptocurrency prices via CoinGecko (BTC, ETH, BNB, SOL, XRP, ADA, DOGE)
+- "ecb rates" → Official European Central Bank FX rates (EUR-based, 30+ currencies)
+- "indices" or "stock market" → Global stock indices: S&P 500, Dow Jones, NASDAQ, FTSE 100, DAX, Nikkei 225
+- "full market" → Comprehensive overview combining all data sources
+- "gold prices" → Gold, silver, and WTI crude oil prices
+- "financial news" → Latest financial news and market updates
+- "market analysis" → Detailed FX and market analysis
+- "trading insights" → AI-generated trading insights and recommendations
+- "[amount] USD/EUR/CNY/AED" → Currency conversion (e.g. "100 USD", "500 CNY")
+- "[amount] XAF to USD" → Reverse conversion
+
+ACTUAL TRADING PROCESS (share when client is ready to trade):
+1. Client deposits XAF/XOF equivalent to EVA Fx dedicated bank account
+2. Client sends photo of deposit slip/receipt with transaction reference
+3. Our team verifies with bank/operator (15-30 minutes)
+4. Foreign currency released after successful verification
+5. Payment methods: Bank transfer, mobile money (MTN, Orange), Alipay, WeChat Pay, SEPA
+
+SECURITY POLICY: No deposit = No exchange (strict enforcement)
+
+Contact Information:
+- General contact: {general_contact}
+- Personal Trading Contact: {trading_contact} (share ONLY when client is ready to trade)
+{fx_context}
+
+Response Style:
+- Professional and concise
+- Use relevant currency and financial emojis
+- Always brand responses with "EVA Fx"
+- If user asks about market data, suggest the relevant command (e.g., "Type 'crypto' for live prices")
+- For non-FX topics, give brief helpful answers but redirect to EVA Fx services
+"""
+
+
 @app.route('/api/chat', methods=['POST'])
 @limiter.limit("20 per minute")
 def chat_api():
@@ -1742,9 +1815,6 @@ def chat_api():
                 'timestamp': datetime.now().isoformat()
             })
         
-        # Handle other commands or use AI
-        # You can add more command handling here similar to the webhook
-        
         # Try OpenClaw Gateway first if available
         if openclaw_client.is_available:
             try:
@@ -1762,14 +1832,15 @@ def chat_api():
                     })
             except Exception as e:
                 logger.warning(f"OpenClaw fallback to OpenAI: {e}")
-        
-        # Default to AI response
+
+        # Default to AI response with full market-aware system prompt
         if openai_client:
             try:
+                web_system_prompt = _build_web_chat_system_prompt()
                 response = openai_client.chat.completions.create(
-                    model="gpt-3.5-turbo",
+                    model=OPENAI_MODEL,
                     messages=[
-                        {"role": "system", "content": "You are EVA, a professional FX trading assistant. Help users with currency exchange queries, rates, and trading processes."},
+                        {"role": "system", "content": web_system_prompt},
                         {"role": "user", "content": user_message}
                     ],
                     max_tokens=500,
@@ -1780,7 +1851,7 @@ def chat_api():
                     ai_response = ai_response.strip()
                 else:
                     ai_response = "I'm sorry, I couldn't generate a proper response. Please try asking about FX rates."
-                
+
                 return jsonify({
                     'message': ai_response,
                     'session_id': session_id,
@@ -1793,7 +1864,7 @@ def chat_api():
                     'session_id': session_id,
                     'timestamp': datetime.now().isoformat()
                 })
-        
+
         # Fallback response
         return jsonify({
             'message': "Hi! I'm EVA, your FX trading assistant. You can ask me about currency rates, exchange calculations, or trading processes. Try asking 'rates' or '100 USD'.",
@@ -2192,6 +2263,46 @@ def get_openclaw_status():
     return jsonify({
         'status': 'success',
         'openclaw': openclaw_client.get_status(),
+        'timestamp': datetime.now(pytz.utc).isoformat()
+    })
+
+
+@app.route('/api/market-summary', methods=['GET'])
+@limiter.limit("20 per minute")
+def get_market_summary():
+    """
+    Aggregated market summary combining crypto prices, ECB FX rates, and global indices.
+    Used by the live market ticker bar on the web interface.
+    """
+    summary = {}
+
+    try:
+        crypto_data = market_data.get_crypto_prices()
+        if 'error' not in crypto_data:
+            summary['crypto'] = crypto_data.get('coins', {})
+    except Exception as e:
+        logger.debug(f"Market summary crypto error: {e}")
+
+    try:
+        ecb_data = market_data.get_ecb_rates()
+        if 'error' not in ecb_data:
+            # Return only the most liquid / commonly requested currency pairs
+            all_rates = ecb_data.get('rates', {})
+            key_pairs = ['USD', 'GBP', 'JPY', 'CHF', 'CNY', 'AUD', 'CAD']
+            summary['fx_rates'] = {k: all_rates[k] for k in key_pairs if k in all_rates}
+    except Exception as e:
+        logger.debug(f"Market summary ECB error: {e}")
+
+    try:
+        indices_data = market_data.get_global_indices()
+        if 'indices' in indices_data:
+            summary['indices'] = indices_data.get('indices', {})
+    except Exception as e:
+        logger.debug(f"Market summary indices error: {e}")
+
+    return jsonify({
+        'status': 'success',
+        'data': summary,
         'timestamp': datetime.now(pytz.utc).isoformat()
     })
 

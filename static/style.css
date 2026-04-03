@@ -148,9 +148,13 @@ body {
 .ticker-content {
     display: flex;
     gap: 24px;
-    animation: ticker-scroll 30s linear infinite;
+    animation: ticker-scroll 60s linear infinite;
     white-space: nowrap;
     padding: 0 12px;
+}
+
+.market-ticker:hover .ticker-content {
+    animation-play-state: paused;
 }
 
 .ticker-item {
