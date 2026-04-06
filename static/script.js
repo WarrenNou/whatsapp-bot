@@ -139,7 +139,7 @@ class ChatBot {
         const sanitizeUrl = (url) => {
             try {
                 const parsed = new URL(url);
-                if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                if (parsed.protocol.toLowerCase() === 'http:' || parsed.protocol.toLowerCase() === 'https:') {
                     return url;
                 }
             } catch (_) { /* invalid URL */ }
