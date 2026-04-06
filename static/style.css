@@ -125,11 +125,6 @@ body {
 }
 
 .logo-icon {
-    font-size: 1.4em;
-    background: var(--accent-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
     width: 42px;
     height: 42px;
     display: flex;
@@ -138,7 +133,6 @@ body {
     border-radius: var(--radius-md);
     background: var(--accent-gradient);
     color: var(--text-on-accent);
-    -webkit-text-fill-color: white;
     font-size: 1.1em;
     flex-shrink: 0;
 }
@@ -736,7 +730,7 @@ body {
     .quick-actions { padding: 8px 10px; gap: 4px; flex-wrap: wrap; }
 
     .quick-btn { font-size: 0.66em; padding: 5px 8px; }
-    .quick-btn span.btn-text { display: none; }
+    .btn-text { display: none; }
 
     .telegram-quick-actions { gap: 4px; }
 

@@ -65,7 +65,7 @@ class ChatBot {
             });
 
             if (!response.ok) {
-                throw new Error('HTTP error! status: ' + response.status);
+                throw new Error('HTTP error, status code: ' + response.status);
             }
 
             const data = await response.json();
@@ -113,9 +113,18 @@ class ChatBot {
         this.scrollToBottom();
     }
 
+    escapeHtml(text) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+    }
+
     formatMessage(text) {
-        // Format URLs first (before converting line breaks)
-        var formatted = text.replace(/(https?:\/\/[^\s\n<>]+?)(?=\s|$|\n|<)/g, function(match, url) {
+        // Escape HTML entities first to prevent XSS
+        var escaped = this.escapeHtml(text);
+
+        // Format URLs (after escaping, URLs are still intact)
+        var formatted = escaped.replace(/(https?:\/\/[^\s\n&<>]+?)(?=\s|$|\n|&lt;)/g, function(match, url) {
             return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" style="color: var(--accent-secondary); text-decoration: underline; text-underline-offset: 2px;">' + url + '</a>';
         });
 
