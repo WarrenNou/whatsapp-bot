@@ -528,7 +528,7 @@ body {
     background: var(--bg-elevated);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-full);
-    padding: 4px 4px 4px 4px;
+    padding: 4px;
     transition: all var(--transition-base);
 }
 
