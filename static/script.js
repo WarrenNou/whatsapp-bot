@@ -135,29 +135,29 @@ class ChatBot {
     }
     
     formatMessage(text) {
-        console.log('Original text:', text);
-        
-        // Format URLs first (before converting line breaks) - be very specific about URL endings
+        // Sanitize a URL: only allow http/https schemes to prevent XSS via javascript: etc.
+        const sanitizeUrl = (url) => {
+            try {
+                const parsed = new URL(url);
+                if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                    return url;
+                }
+            } catch (_) { /* invalid URL */ }
+            return '#';
+        };
+
+        // Format URLs (before converting line breaks)
         let formatted = text.replace(/(https?:\/\/[^\s\n<>]+?)(?=\s|$|\n|<)/g, (match, url) => {
-            console.log('Found URL:', url);
-            return `<a href="${url}" target="_blank" style="color: #667eea; text-decoration: underline;">${url}</a>`;
+            const safeUrl = sanitizeUrl(url);
+            return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-blue);text-decoration:underline;">${url}</a>`;
         });
-        
-        console.log('After URL formatting:', formatted);
-        
+
         // Convert line breaks to HTML
         formatted = formatted.replace(/\n/g, '<br>');
-        
-        console.log('After line break conversion:', formatted);
-        
+
         // Format bold text (markdown-style)
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        
-        console.log('Final formatted text:', formatted);
-        
-        // Format currency symbols and emojis (keep as is)
-        // They're already in the text
-        
+
         return formatted;
     }
     
@@ -326,18 +326,6 @@ async function loadMarketTicker() {
 
 // Add some nice effects
 document.addEventListener('DOMContentLoaded', () => {
-    // Animate messages on load
-    const messages = document.querySelectorAll('.message');
-    messages.forEach((message, index) => {
-        message.style.opacity = '0';
-        message.style.transform = 'translateY(20px)';
-        setTimeout(() => {
-            message.style.transition = 'opacity 0.5s, transform 0.5s';
-            message.style.opacity = '1';
-            message.style.transform = 'translateY(0)';
-        }, index * 100);
-    });
-    
     // Add ripple effect to buttons
     const buttons = document.querySelectorAll('.quick-btn, #send-button');
     buttons.forEach(button => {
@@ -347,14 +335,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const size = Math.max(rect.width, rect.height);
             const x = e.clientX - rect.left - size / 2;
             const y = e.clientY - rect.top - size / 2;
-            
+
             ripple.style.width = ripple.style.height = size + 'px';
             ripple.style.left = x + 'px';
             ripple.style.top = y + 'px';
             ripple.classList.add('ripple');
-            
+
             this.appendChild(ripple);
-            
+
             setTimeout(() => {
                 ripple.remove();
             }, 600);
@@ -369,84 +357,73 @@ style.textContent = `
         position: relative;
         overflow: hidden;
     }
-    
+
     .ripple {
         position: absolute;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.25);
         transform: scale(0);
-        animation: ripple-animation 0.6s linear;
+        animation: ripple-animation 0.55s linear;
         pointer-events: none;
     }
-    
+
     @keyframes ripple-animation {
-        to {
-            transform: scale(4);
-            opacity: 0;
-        }
+        to { transform: scale(4); opacity: 0; }
     }
-    
-    /* Copy button styles */
+
+    /* Copy button */
     .message-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 5px;
+        margin-top: 6px;
     }
-    
+
     .copy-button {
         background: none;
         border: none;
-        color: #9ca3af;
+        color: var(--text-muted, #4a5568);
         cursor: pointer;
-        padding: 5px;
-        border-radius: 4px;
-        font-size: 0.8em;
-        transition: all 0.2s ease;
+        padding: 4px 6px;
+        border-radius: 6px;
+        font-size: 0.75em;
+        transition: all 0.18s ease;
         opacity: 0.7;
     }
-    
+
     .copy-button:hover {
-        color: #667eea;
-        background: rgba(102, 126, 234, 0.1);
+        color: var(--accent-blue, #4f8cff);
+        background: rgba(79,140,255,0.12);
         opacity: 1;
     }
-    
-    .bot-message .copy-button {
-        color: #64748b;
-    }
-    
-    .bot-message .copy-button:hover {
-        color: #667eea;
-        background: rgba(102, 126, 234, 0.1);
-    }
-    
-    /* Copy notification styles */
+
+    /* Copy notification */
     .copy-notification {
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #10b981;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        font-size: 0.9em;
+        background: linear-gradient(135deg, #1a2035, #141929);
+        border: 1px solid rgba(79,140,255,0.3);
+        color: #e8eaf2;
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-size: 0.85em;
         font-weight: 500;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         transform: translateX(400px);
-        transition: transform 0.3s ease;
-        z-index: 1000;
+        transition: transform 0.28s cubic-bezier(0.22,1,0.36,1);
+        z-index: 9999;
         display: flex;
         align-items: center;
         gap: 8px;
     }
-    
+
     .copy-notification.show {
         transform: translateX(0);
     }
-    
+
     .copy-notification i {
-        font-size: 1em;
+        color: #48bb78;
     }
 `;
 document.head.appendChild(style);

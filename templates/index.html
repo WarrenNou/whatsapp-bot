@@ -9,7 +9,7 @@
       href="{{ url_for('static', filename='style.css') }}"
     />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link
@@ -19,10 +19,13 @@
   </head>
   <body>
     <div class="chat-container">
+      <!-- Header -->
       <div class="chat-header">
         <div class="header-content">
           <div class="logo-section">
-            <i class="fas fa-exchange-alt logo-icon"></i>
+            <div class="logo-icon">
+              <i class="fas fa-chart-line"></i>
+            </div>
             <div class="header-text">
               <h1>EVA Fx Trading</h1>
               <p>AI-Powered Currency Exchange</p>
@@ -37,7 +40,7 @@
                 title="Join our Telegram channel"
               >
                 <i class="fab fa-telegram"></i>
-                <span>Join Channel</span>
+                <span>Channel</span>
               </a>
               <a
                 href="https://t.me/evafx_assistant_bot"
@@ -60,10 +63,14 @@
       <!-- Market Ticker Bar -->
       <div class="market-ticker" id="market-ticker">
         <div class="ticker-content" id="ticker-content">
-          <span class="ticker-item">📊 Loading market data...</span>
+          <span class="ticker-item">
+            <span class="ticker-label">Loading</span>
+            <span class="ticker-price">market data…</span>
+          </span>
         </div>
       </div>
 
+      <!-- Messages -->
       <div class="chat-messages" id="chat-messages">
         <div class="message bot-message welcome-message">
           <div class="message-avatar">
@@ -73,9 +80,10 @@
             <div class="message-text" id="welcome_message">
               <h3>👋 Welcome to EVA Fx Trading!</h3>
               <p>
-                🤖 <strong>AI DISCLAIMER:</strong> This is an AI-powered trading
-                assistant. All rates and information are automatically generated
-                and should be verified before making any financial decisions.
+                🤖 <strong>AI DISCLAIMER:</strong> This is an AI-powered
+                trading assistant. All rates and information are automatically
+                generated and should be verified before making any financial
+                decisions.
               </p>
               <br />
               <p>I can help you with:</p>
@@ -129,18 +137,19 @@
         </div>
       </div>
 
+      <!-- Quick Actions -->
       <div class="quick-actions">
         <button class="quick-btn" onclick="sendQuickMessage('rates')">
-          <i class="fas fa-chart-line"></i> Current Rates
+          <i class="fas fa-chart-line"></i> Rates
         </button>
         <button class="quick-btn" onclick="sendQuickMessage('financial news')">
-          <i class="fas fa-newspaper"></i> Financial News
+          <i class="fas fa-newspaper"></i> News
         </button>
         <button class="quick-btn" onclick="sendQuickMessage('market analysis')">
-          <i class="fas fa-chart-bar"></i> Market Analysis
+          <i class="fas fa-chart-bar"></i> Analysis
         </button>
         <button class="quick-btn" onclick="sendQuickMessage('gold prices')">
-          <i class="fas fa-coins"></i> Gold Prices
+          <i class="fas fa-coins"></i> Gold
         </button>
         <button class="quick-btn" onclick="sendQuickMessage('crypto')">
           <i class="fab fa-bitcoin"></i> Crypto
@@ -151,10 +160,7 @@
         <button class="quick-btn" onclick="sendQuickMessage('full market')">
           <i class="fas fa-chart-area"></i> Full Market
         </button>
-        <button
-          class="quick-btn"
-          onclick="sendQuickMessage('trading insights')"
-        >
+        <button class="quick-btn" onclick="sendQuickMessage('trading insights')">
           <i class="fas fa-lightbulb"></i> Insights
         </button>
         <div class="telegram-quick-actions">
@@ -175,15 +181,16 @@
         </div>
       </div>
 
+      <!-- Input -->
       <div class="chat-input-container">
         <div class="chat-input-wrapper">
           <input
             type="text"
             id="message-input"
-            placeholder="Type your message here..."
+            placeholder="Ask about rates, crypto, gold, news…"
             autocomplete="off"
           />
-          <button id="send-button" onclick="sendMessage()">
+          <button id="send-button" onclick="sendMessage()" title="Send">
             <i class="fas fa-paper-plane"></i>
           </button>
         </div>
@@ -193,7 +200,7 @@
             <span></span>
             <span></span>
           </div>
-          <span>EVA is typing...</span>
+          <span>EVA is typing…</span>
         </div>
       </div>
     </div>
